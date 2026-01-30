@@ -4,59 +4,75 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-            "label": "watch",
-            "dependsOn": [
-                "npm: watch:tsc",
-                "npm: watch:esbuild"
-            ],
-            "presentation": {
-                "reveal": "never"
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        },
-        {
-            "type": "npm",
-            "script": "watch:esbuild",
-            "group": "build",
-            "problemMatcher": "$esbuild-watch",
-            "isBackground": true,
-            "label": "npm: watch:esbuild",
-            "presentation": {
-                "group": "watch",
-                "reveal": "never"
-            }
-        },
+			"label": "watch",
+			"dependsOn": [
+				"pnpm: watch:tsc",
+				"pnpm: watch:esbuild"
+			],
+			"presentation": {
+				"reveal": "never"
+			},
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
 		{
-            "type": "npm",
-            "script": "watch:tsc",
-            "group": "build",
-            "problemMatcher": "$tsc-watch",
-            "isBackground": true,
-            "label": "npm: watch:tsc",
-            "presentation": {
-                "group": "watch",
-                "reveal": "never"
-            }
-        },
+			"type": "shell",
+			"command": "pnpm run watch:esbuild",
+			"group": "build",
+			"problemMatcher": {
+				"owner": "esbuild",
+				"fileLocation": ["relative", "${workspaceFolder}"],
+				"pattern": {
+					"regexp": "✘ \\[ERROR\\] (.*)\\n.*?(\\S+):(\\d+):(\\d+):",
+					"message": 1,
+					"file": 2,
+					"line": 3,
+					"column": 4
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "\\[watch\\] build started",
+					"endsPattern": "\\[watch\\] build finished"
+				}
+			},
+			"isBackground": true,
+			"label": "pnpm: watch:esbuild",
+			"presentation": {
+				"group": "watch",
+				"reveal": "never"
+			}
+		},
 		{
-			"type": "npm",
-			"script": "watch-tests",
+			"type": "shell",
+			"command": "pnpm run watch:tsc",
+			"group": "build",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"label": "pnpm: watch:tsc",
+			"presentation": {
+				"group": "watch",
+				"reveal": "never"
+			}
+		},
+		{
+			"type": "shell",
+			"command": "pnpm run watch-tests",
 			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
 			"presentation": {
 				"reveal": "never",
 				"group": "watchers"
 			},
-			"group": "build"
+			"group": "build",
+			"label": "pnpm: watch-tests"
 		},
 		{
 			"label": "tasks: watch-tests",
 			"dependsOn": [
-				"npm: watch",
-				"npm: watch-tests"
+				"watch",
+				"pnpm: watch-tests"
 			],
 			"problemMatcher": []
 		}

@@ -1,26 +1,38 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { MarkerStorage } from './storage';
+import { MarkerDecorationProvider } from './decorationProvider';
+import { registerCommands } from './commands';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+let storage: MarkerStorage | undefined;
+let decorationProvider: MarkerDecorationProvider | undefined;
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "file-markers" is now active!');
+export async function activate(
+  context: vscode.ExtensionContext
+): Promise<void> {
+  console.log('File Markers extension is now active');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('file-markers.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from File Markers!');
-	});
+  // Initialize storage
+  storage = new MarkerStorage();
+  await storage.initialize();
+  context.subscriptions.push(storage);
 
-	context.subscriptions.push(disposable);
+  // Initialize decoration provider
+  decorationProvider = new MarkerDecorationProvider(storage);
+  context.subscriptions.push(decorationProvider);
+
+  // Register decoration provider with VSCode
+  context.subscriptions.push(
+    vscode.window.registerFileDecorationProvider(decorationProvider)
+  );
+
+  // Register commands
+  registerCommands(context, storage);
+
+  // Refresh decorations after initialization
+  decorationProvider.refresh();
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate(): void {
+  storage = undefined;
+  decorationProvider = undefined;
+}

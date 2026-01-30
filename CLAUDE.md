@@ -10,22 +10,22 @@ File Markers is a VSCode extension that allows developers to add visual markers 
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Compile TypeScript
-npm run compile
+pnpm run compile
 
 # Watch mode for development
-npm run watch
+pnpm run watch
 
 # Package extension for distribution
-npx vsce package
+pnpm exec vsce package
 
 # Run linter
-npm run lint
+pnpm run lint
 
 # Run tests
-npm test
+pnpm test
 ```
 
 To debug the extension: Press F5 in VSCode to launch Extension Development Host.
