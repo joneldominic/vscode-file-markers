@@ -1,71 +1,76 @@
-# file-markers README
+# File Markers
 
-This is the README for your extension "file-markers". After writing up a brief description, we recommend including the following sections.
+Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage.
+
+Perfect for migrations, refactoring projects, and code reviews.
+
+<!-- ![File Markers Demo](images/demo.gif) -->
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Right-click to mark** — Add markers directly from the Explorer context menu
+- **Visual badges** — See file status at a glance with colored badges
+- **Folder support** — Mark entire folders, not just files
+- **Persistent markers** — Markers survive restarts and can be shared with your team
+- **Zero configuration** — Works out of the box
 
-For example if there is an image subfolder under your extension project workspace:
+## Available Markers
 
-\!\[feature X\]\(images/feature-x.png\)
+| Marker | Badge | Use Case |
+|--------|-------|----------|
+| Done | ✓ | Completed files |
+| In Progress | ◐ | Currently working on |
+| Pending | ○ | Not started yet |
+| Important | ★ | High priority files |
+| Needs Review | ◉ | Ready for code review |
+| Question | ? | Need clarification |
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+## Usage
+
+1. Right-click any file or folder in the Explorer
+2. Select **File Markers** from the context menu
+3. Choose a marker type (or **Remove Marker** to clear)
+
+<!-- ![Context Menu](images/context-menu.png) -->
+
+## Storage
+
+Markers are stored in `.vscode/file-markers.json` in your workspace. Commit this file to share markers with your team, or add it to `.gitignore` for personal use.
+
+```json
+{
+  "version": 1,
+  "markers": {
+    "src/old-api.ts": "done",
+    "src/utils": "in-progress"
+  }
+}
+```
+
+## Use Cases
+
+- **Migrations** — Track which files have been migrated to a new framework
+- **Refactoring** — Mark files as you work through a large refactor
+- **Code Reviews** — Flag files that need attention
+- **Onboarding** — Mark files you've reviewed while learning a codebase
+- **Tech Debt** — Highlight files that need improvement
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- VSCode 1.74.0 or higher
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+None yet. [Report an issue](https://github.com/joneldominic/vscode-file-markers/issues)
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+Initial release
 
 ---
 
-## Following extension guidelines
+## License
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+[MIT](LICENSE)
