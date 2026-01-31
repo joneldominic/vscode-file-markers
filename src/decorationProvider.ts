@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
-import { MarkerStorage } from './storage';
-import { getMarkerById } from './markers';
+import { MarkerStorage, FALLBACK_MARKER } from './storage';
 
 export class MarkerDecorationProvider
   implements vscode.FileDecorationProvider, vscode.Disposable
@@ -12,7 +11,6 @@ export class MarkerDecorationProvider
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
   constructor(private readonly storage: MarkerStorage) {
-    // Listen for marker changes and refresh decorations
     this.disposables.push(
       storage.onDidChangeMarkers(event => {
         this._onDidChangeFileDecorations.fire(event.uri);
@@ -29,22 +27,19 @@ export class MarkerDecorationProvider
       return undefined;
     }
 
-    const marker = getMarkerById(markerId);
-    if (!marker) {
-      return undefined;
-    }
+    const marker = this.storage.getMarkerType(markerId);
+    const isUnknown = marker.id === FALLBACK_MARKER.id;
 
     return {
       badge: marker.badge,
-      color: marker.color,
-      tooltip: `File Marker: ${marker.label}`,
+      color: isUnknown ? undefined : marker.color,
+      tooltip: isUnknown
+        ? `Unknown marker type: "${markerId}"`
+        : `File Marker: ${marker.label}`,
       propagate: false,
     };
   }
 
-  /**
-   * Refresh all decorations (e.g., after loading from storage)
-   */
   refresh(): void {
     this._onDidChangeFileDecorations.fire(undefined);
   }

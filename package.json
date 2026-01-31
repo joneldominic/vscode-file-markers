@@ -2,7 +2,7 @@
   "name": "file-markers",
   "displayName": "File Markers",
   "description": "Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage. Perfect for migrations, refactoring projects, and code reviews. Markers persist in .vscode/file-markers.json for easy team sharing.",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -16,85 +16,43 @@
   "contributes": {
     "commands": [
       {
-        "command": "file-markers.addMarker.done",
-        "title": "✓ Done",
-        "category": "File Markers"
-      },
-      {
-        "command": "file-markers.addMarker.in-progress",
-        "title": "◐ In Progress",
-        "category": "File Markers"
-      },
-      {
-        "command": "file-markers.addMarker.pending",
-        "title": "○ Pending",
-        "category": "File Markers"
-      },
-      {
-        "command": "file-markers.addMarker.important",
-        "title": "★ Important",
-        "category": "File Markers"
-      },
-      {
-        "command": "file-markers.addMarker.review",
-        "title": "◉ Needs Review",
-        "category": "File Markers"
-      },
-      {
-        "command": "file-markers.addMarker.question",
-        "title": "? Question",
-        "category": "File Markers"
+        "command": "file-markers.addMarker",
+        "title": "File Markers: Add Marker..."
       },
       {
         "command": "file-markers.removeMarker",
-        "title": "Remove Marker",
-        "category": "File Markers"
+        "title": "File Markers: Remove Marker"
+      },
+      {
+        "command": "file-markers.openConfig",
+        "title": "File Markers: Open Configuration"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "submenu": "file-markers.submenu",
-          "group": "2_workspace"
-        }
-      ],
-      "file-markers.submenu": [
-        {
-          "command": "file-markers.addMarker.done",
-          "group": "markers@1"
-        },
-        {
-          "command": "file-markers.addMarker.in-progress",
-          "group": "markers@2"
-        },
-        {
-          "command": "file-markers.addMarker.pending",
-          "group": "markers@3"
-        },
-        {
-          "command": "file-markers.addMarker.important",
-          "group": "markers@4"
-        },
-        {
-          "command": "file-markers.addMarker.review",
-          "group": "markers@5"
-        },
-        {
-          "command": "file-markers.addMarker.question",
-          "group": "markers@6"
+          "command": "file-markers.addMarker",
+          "group": "2_workspace@1"
         },
         {
           "command": "file-markers.removeMarker",
-          "group": "remove@1"
+          "group": "2_workspace@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "file-markers.addMarker",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.removeMarker",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.openConfig"
         }
       ]
-    },
-    "submenus": [
-      {
-        "id": "file-markers.submenu",
-        "label": "File Markers"
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

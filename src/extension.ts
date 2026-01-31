@@ -11,7 +11,7 @@ export async function activate(
 ): Promise<void> {
   console.log('File Markers extension is now active');
 
-  // Initialize storage
+  // Initialize storage (includes marker type definitions)
   storage = new MarkerStorage();
   await storage.initialize();
   context.subscriptions.push(storage);
