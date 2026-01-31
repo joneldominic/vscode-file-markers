@@ -8,7 +8,7 @@ Perfect for migrations, refactoring projects, and code reviews.
 
 ## Features
 
-- **Right-click to mark** — Add markers directly from the Explorer context menu
+- **Right-click to mark** — Set markers directly from the Explorer context menu
 - **Visual badges** — See file status at a glance with colored badges
 - **Folder support** — Mark entire folders, not just files
 - **Persistent markers** — Markers survive restarts and can be shared with your team

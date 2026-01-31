@@ -55,15 +55,15 @@ Developers working on large codebases, migrations, or refactoring projects need 
 
 ## Feature Requirements
 
-### F1: Add Marker via Context Menu
+### F1: Set Marker via Context Menu
 
 **Priority:** P0 (Must Have)
 
-**Description:** Users can right-click any file or folder in the Explorer and select "Add Marker" to apply a visual marker.
+**Description:** Users can right-click any file or folder in the Explorer and select "Set Marker" to apply a visual marker.
 
 **Acceptance Criteria:**
-- Right-click on file → shows "Add Marker" submenu
-- Right-click on folder → shows "Add Marker" submenu
+- Right-click on file → shows "Set Marker" submenu
+- Right-click on folder → shows "Set Marker" submenu
 - Submenu displays available marker types (e.g., ✅ Done, 🔄 In Progress, ❌ Pending, ⭐ Important)
 - Selecting a marker type immediately applies it
 - Marker appears inline next to the file/folder name in Explorer
@@ -197,7 +197,7 @@ Developers working on large codebases, migrations, or refactoring projects need 
 **Description:** Apply or remove markers from multiple files at once.
 
 **Acceptance Criteria:**
-- Multi-select files in Explorer → right-click → "Add Marker" applies to all selected
+- Multi-select files in Explorer → right-click → "Set Marker" applies to all selected
 - "Remove All Markers" command available in Command Palette
 - "Remove Markers in Folder" option when right-clicking a folder
 
@@ -393,7 +393,7 @@ interface FileDecoration {
 ## Release Plan
 
 ### v0.1.0 (MVP)
-- F1: Add Marker via Context Menu
+- F1: Set Marker via Context Menu
 - F2: Remove Marker via Context Menu
 - F4: Visual Markers in Explorer
 - F5: Default Marker Types

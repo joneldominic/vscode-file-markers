@@ -6,12 +6,16 @@ export function registerCommands(
   context: vscode.ExtensionContext,
   storage: MarkerStorage
 ): void {
-  // Add Marker command with QuickPick
+  // Set Marker command with QuickPick (supports multi-select)
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'file-markers.addMarker',
-      async (uri: vscode.Uri) => {
-        if (!uri) {
+      'file-markers.setMarker',
+      async (uri: vscode.Uri, uris?: vscode.Uri[]) => {
+        // When multi-selecting in Explorer, VSCode passes clicked item as uri
+        // and all selected items as uris array
+        const targets = uris && uris.length > 0 ? uris : uri ? [uri] : [];
+
+        if (targets.length === 0) {
           return;
         }
 
@@ -23,7 +27,10 @@ export function registerCommands(
           return;
         }
 
-        const currentMarkerId = storage.getMarker(uri);
+        // For single file, show current marker
+        const currentMarkerId = targets.length === 1
+          ? storage.getMarker(targets[0])
+          : undefined;
 
         const items = markerTypes.map(m => ({
           label: `${m.badge} ${m.label}`,
@@ -31,32 +38,33 @@ export function registerCommands(
           markerId: m.id,
         }));
 
+        const placeHolder = targets.length === 1
+          ? 'Select a marker to apply'
+          : `Select a marker to apply to ${targets.length} items`;
+
         const selected = await vscode.window.showQuickPick(items, {
-          placeHolder: 'Select a marker to apply',
+          placeHolder,
         });
 
         if (selected) {
-          storage.setMarker(uri, selected.markerId);
+          storage.setMarkers(targets, selected.markerId);
         }
       }
     )
   );
 
-  // Remove Marker command
+  // Remove Marker command (supports multi-select)
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'file-markers.removeMarker',
-      (uri: vscode.Uri) => {
-        if (!uri) {
+      (uri: vscode.Uri, uris?: vscode.Uri[]) => {
+        const targets = uris && uris.length > 0 ? uris : uri ? [uri] : [];
+
+        if (targets.length === 0) {
           return;
         }
 
-        if (!storage.hasMarker(uri)) {
-          // Silently do nothing if no marker
-          return;
-        }
-
-        storage.removeMarker(uri);
+        storage.removeMarkers(targets);
       }
     )
   );
@@ -98,6 +106,92 @@ export function registerCommands(
 
         const doc = await vscode.workspace.openTextDocument(storageUri);
         await vscode.window.showTextDocument(doc);
+      }
+    )
+  );
+
+  // Remove Markers in Folder command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'file-markers.removeMarkersInFolder',
+      async (uri: vscode.Uri) => {
+        if (!uri) {
+          return;
+        }
+
+        const count = storage.removeMarkersInFolder(uri);
+        if (count > 0) {
+          vscode.window.showInformationMessage(
+            `Removed ${count} marker${count === 1 ? '' : 's'} from folder.`
+          );
+        } else {
+          vscode.window.showInformationMessage('No markers found in folder.');
+        }
+      }
+    )
+  );
+
+  // Remove All Markers command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'file-markers.removeAllMarkers',
+      async () => {
+        const markerCount = storage.getMarkerCount();
+        if (markerCount === 0) {
+          vscode.window.showInformationMessage('No markers to remove.');
+          return;
+        }
+
+        const confirm = await vscode.window.showWarningMessage(
+          `Remove all ${markerCount} marker${markerCount === 1 ? '' : 's'} from this workspace?`,
+          { modal: true },
+          'Remove All'
+        );
+
+        if (confirm === 'Remove All') {
+          const removed = storage.removeAllMarkers();
+          vscode.window.showInformationMessage(
+            `Removed ${removed} marker${removed === 1 ? '' : 's'}.`
+          );
+        }
+      }
+    )
+  );
+
+  // Toggle Marker command (keyboard shortcut)
+  // Cycles: no marker → done → in-progress → pending → no marker
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'file-markers.toggleMarker',
+      () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showWarningMessage('No active file to toggle marker.');
+          return;
+        }
+
+        const uri = editor.document.uri;
+        const currentMarkerId = storage.getMarker(uri);
+
+        // Define cycle order (uses first 3 default marker IDs)
+        const cycleOrder = ['done', 'in-progress', 'pending'];
+
+        if (!currentMarkerId) {
+          // No marker → apply first in cycle
+          storage.setMarker(uri, cycleOrder[0]);
+        } else {
+          const currentIndex = cycleOrder.indexOf(currentMarkerId);
+          if (currentIndex === -1) {
+            // Current marker not in cycle → remove it
+            storage.removeMarker(uri);
+          } else if (currentIndex === cycleOrder.length - 1) {
+            // Last in cycle → remove marker
+            storage.removeMarker(uri);
+          } else {
+            // Move to next in cycle
+            storage.setMarker(uri, cycleOrder[currentIndex + 1]);
+          }
+        }
       }
     )
   );

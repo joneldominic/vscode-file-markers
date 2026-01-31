@@ -2,7 +2,7 @@
   "name": "file-markers",
   "displayName": "File Markers",
   "description": "Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage. Perfect for migrations, refactoring projects, and code reviews. Markers persist in .vscode/file-markers.json for easy team sharing.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -16,12 +16,24 @@
   "contributes": {
     "commands": [
       {
-        "command": "file-markers.addMarker",
-        "title": "File Markers: Add Marker..."
+        "command": "file-markers.setMarker",
+        "title": "File Markers: Set Marker..."
       },
       {
         "command": "file-markers.removeMarker",
         "title": "File Markers: Remove Marker"
+      },
+      {
+        "command": "file-markers.removeMarkersInFolder",
+        "title": "File Markers: Remove Markers in Folder"
+      },
+      {
+        "command": "file-markers.removeAllMarkers",
+        "title": "File Markers: Remove All Markers"
+      },
+      {
+        "command": "file-markers.toggleMarker",
+        "title": "File Markers: Toggle Marker"
       },
       {
         "command": "file-markers.openConfig",
@@ -31,17 +43,22 @@
     "menus": {
       "explorer/context": [
         {
-          "command": "file-markers.addMarker",
+          "command": "file-markers.setMarker",
           "group": "2_workspace@1"
         },
         {
           "command": "file-markers.removeMarker",
           "group": "2_workspace@2"
+        },
+        {
+          "command": "file-markers.removeMarkersInFolder",
+          "group": "2_workspace@3",
+          "when": "explorerResourceIsFolder"
         }
       ],
       "commandPalette": [
         {
-          "command": "file-markers.addMarker",
+          "command": "file-markers.setMarker",
           "when": "false"
         },
         {
@@ -49,10 +66,28 @@
           "when": "false"
         },
         {
+          "command": "file-markers.removeMarkersInFolder",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.removeAllMarkers"
+        },
+        {
+          "command": "file-markers.toggleMarker"
+        },
+        {
           "command": "file-markers.openConfig"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "file-markers.toggleMarker",
+        "key": "ctrl+shift+m",
+        "mac": "cmd+shift+m",
+        "when": "editorTextFocus"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

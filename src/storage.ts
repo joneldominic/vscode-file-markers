@@ -212,6 +212,107 @@ export class MarkerStorage implements vscode.Disposable {
   }
 
   /**
+   * Set markers for multiple URIs at once
+   */
+  setMarkers(uris: vscode.Uri[], markerId: string): void {
+    for (const uri of uris) {
+      const relativePath = this.getRelativePath(uri);
+      if (relativePath) {
+        this.markers.set(relativePath, markerId);
+        this._onDidChangeMarkers.fire({ uri, markerId });
+      }
+    }
+    this.scheduleSave();
+  }
+
+  /**
+   * Remove markers from multiple URIs at once
+   */
+  removeMarkers(uris: vscode.Uri[]): void {
+    let changed = false;
+    for (const uri of uris) {
+      const relativePath = this.getRelativePath(uri);
+      if (relativePath && this.markers.delete(relativePath)) {
+        changed = true;
+        this._onDidChangeMarkers.fire({ uri, markerId: undefined });
+      }
+    }
+    if (changed) {
+      this.scheduleSave();
+    }
+  }
+
+  /**
+   * Remove all markers within a folder (and subfolders)
+   */
+  removeMarkersInFolder(folderUri: vscode.Uri): number {
+    const folderPath = this.getRelativePath(folderUri);
+    if (!folderPath) {
+      return 0;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return 0;
+    }
+
+    const prefix = folderPath + '/';
+    const toRemove: string[] = [];
+
+    for (const relativePath of this.markers.keys()) {
+      // Match exact folder or any path starting with folder/
+      if (relativePath === folderPath || relativePath.startsWith(prefix)) {
+        toRemove.push(relativePath);
+      }
+    }
+
+    for (const relativePath of toRemove) {
+      this.markers.delete(relativePath);
+      const uri = vscode.Uri.joinPath(workspaceFolder.uri, relativePath);
+      this._onDidChangeMarkers.fire({ uri, markerId: undefined });
+    }
+
+    if (toRemove.length > 0) {
+      this.scheduleSave();
+    }
+
+    return toRemove.length;
+  }
+
+  /**
+   * Remove all markers in the workspace
+   */
+  removeAllMarkers(): number {
+    const count = this.markers.size;
+    if (count === 0) {
+      return 0;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return 0;
+    }
+
+    // Fire events for all removed markers
+    for (const relativePath of this.markers.keys()) {
+      const uri = vscode.Uri.joinPath(workspaceFolder.uri, relativePath);
+      this._onDidChangeMarkers.fire({ uri, markerId: undefined });
+    }
+
+    this.markers.clear();
+    this.scheduleSave();
+
+    return count;
+  }
+
+  /**
+   * Get total number of markers
+   */
+  getMarkerCount(): number {
+    return this.markers.size;
+  }
+
+  /**
    * Get all marked URIs
    */
   getAllMarkedUris(): vscode.Uri[] {
