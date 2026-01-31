@@ -3,12 +3,40 @@
   "displayName": "File Markers",
   "description": "Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage. Perfect for migrations, refactoring projects, and code reviews. Markers persist in .vscode/file-markers.json for easy team sharing.",
   "version": "1.0.0",
+  "publisher": "joneldominic-dev",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "file",
+    "marker",
+    "badge",
+    "explorer",
+    "status",
+    "tracking",
+    "migration",
+    "refactoring",
+    "productivity",
+    "workflow"
+  ],
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joneldominic/vscode-file-markers"
+  },
+  "homepage": "https://github.com/joneldominic/vscode-file-markers#readme",
+  "bugs": {
+    "url": "https://github.com/joneldominic/vscode-file-markers/issues"
+  },
+  "license": "MIT",
+  "pricing": "Free",
   "activationEvents": [
     "onStartupFinished"
   ],

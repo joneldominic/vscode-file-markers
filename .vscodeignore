@@ -1,14 +1,38 @@
+# Source files (compiled to dist/)
+src/**
+**/*.ts
+**/*.map
+
+# Development config
 .vscode/**
 .vscode-test/**
+.vscode-test.*
 out/**
 node_modules/**
-src/**
 .gitignore
-.yarnrc
+.npmrc
+tsconfig.json
+eslint.config.mjs
 esbuild.js
+
+# Documentation & planning (not needed in extension)
+thoughts/**
+PRD.md
+CLAUDE.md
 vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
-**/*.map
-**/*.ts
-**/.vscode-test.*
+
+# Package manager files
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/**
+.github/**
+
+# Claude Code config
+.claude/**
