@@ -2,7 +2,7 @@
   "name": "file-markers",
   "displayName": "File Markers",
   "description": "Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage. Perfect for migrations, refactoring projects, and code reviews. Markers persist in .vscode/file-markers.json for easy team sharing.",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -38,6 +38,10 @@
       {
         "command": "file-markers.openConfig",
         "title": "File Markers: Open Configuration"
+      },
+      {
+        "command": "file-markers.showMarkerStats",
+        "title": "File Markers: Show Marker Statistics"
       }
     ],
     "menus": {
@@ -77,6 +81,9 @@
         },
         {
           "command": "file-markers.openConfig"
+        },
+        {
+          "command": "file-markers.showMarkerStats"
         }
       ]
     },
@@ -87,7 +94,23 @@
         "mac": "cmd+shift+m",
         "when": "editorTextFocus"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "File Markers",
+      "properties": {
+        "fileMarkers.inheritFolderMarkers": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, unmarked files inside a marked folder will display a dimmed version of the folder's marker."
+        },
+        "fileMarkers.statusBarAlignment": {
+          "type": "string",
+          "enum": ["left", "right"],
+          "default": "left",
+          "description": "Position of the marker statistics in the status bar."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

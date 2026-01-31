@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import { MarkerStorage } from './storage';
 import { MarkerDecorationProvider } from './decorationProvider';
+import { StatusBarManager } from './statusBar';
 import { registerCommands } from './commands';
 
 let storage: MarkerStorage | undefined;
 let decorationProvider: MarkerDecorationProvider | undefined;
+let statusBarManager: StatusBarManager | undefined;
 
 export async function activate(
   context: vscode.ExtensionContext
@@ -25,7 +27,18 @@ export async function activate(
     vscode.window.registerFileDecorationProvider(decorationProvider)
   );
 
-  // Register commands
+  // Initialize status bar
+  statusBarManager = new StatusBarManager(storage);
+  context.subscriptions.push(statusBarManager);
+
+  // Register status bar command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('file-markers.showMarkerStats', () => {
+      statusBarManager?.showStats();
+    })
+  );
+
+  // Register other commands
   registerCommands(context, storage);
 
   // Refresh decorations after initialization
@@ -35,4 +48,5 @@ export async function activate(
 export function deactivate(): void {
   storage = undefined;
   decorationProvider = undefined;
+  statusBarManager = undefined;
 }

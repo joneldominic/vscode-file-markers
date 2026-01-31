@@ -293,14 +293,12 @@ export class MarkerStorage implements vscode.Disposable {
       return 0;
     }
 
-    // Fire events for all removed markers
-    for (const relativePath of this.markers.keys()) {
-      const uri = vscode.Uri.joinPath(workspaceFolder.uri, relativePath);
-      this._onDidChangeMarkers.fire({ uri, markerId: undefined });
-    }
-
+    // Clear markers
     this.markers.clear();
     this.scheduleSave();
+
+    // Fire a single event to trigger refresh (uri is workspace root to signal "all changed")
+    this._onDidChangeMarkers.fire({ uri: workspaceFolder.uri, markerId: undefined });
 
     return count;
   }
@@ -310,6 +308,53 @@ export class MarkerStorage implements vscode.Disposable {
    */
   getMarkerCount(): number {
     return this.markers.size;
+  }
+
+  /**
+   * Get the effective marker for a URI, checking parent folders if no direct marker
+   * Returns both the marker ID and whether it's inherited
+   */
+  getEffectiveMarker(uri: vscode.Uri): { markerId: string; inherited: boolean } | undefined {
+    // First check for direct marker
+    const directMarker = this.getMarker(uri);
+    if (directMarker) {
+      return { markerId: directMarker, inherited: false };
+    }
+
+    // Check if inheritance is enabled
+    const config = vscode.workspace.getConfiguration('fileMarkers');
+    if (!config.get<boolean>('inheritFolderMarkers', false)) {
+      return undefined;
+    }
+
+    // Walk up parent paths to find a folder marker
+    const relativePath = this.getRelativePath(uri);
+    if (!relativePath) {
+      return undefined;
+    }
+
+    const parts = relativePath.split('/');
+    // Start from immediate parent, walk up to root
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const parentPath = parts.slice(0, i).join('/');
+      const parentMarker = this.markers.get(parentPath);
+      if (parentMarker) {
+        return { markerId: parentMarker, inherited: true };
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Get marker counts grouped by marker type ID
+   */
+  getMarkerCountsByType(): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const markerId of this.markers.values()) {
+      counts.set(markerId, (counts.get(markerId) ?? 0) + 1);
+    }
+    return counts;
   }
 
   /**
