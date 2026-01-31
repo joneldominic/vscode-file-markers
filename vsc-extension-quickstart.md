@@ -141,6 +141,143 @@ npx @vscode/vsce unpublish joneldominic-dev.file-markers
 npx @vscode/vsce show joneldominic-dev.file-markers
 ```
 
+## Publishing to Open VSX (for Cursor, VSCodium, Gitpod)
+
+The VS Code Marketplace is only available in Microsoft's VS Code. For other editors like **Cursor**, **VSCodium**, and **Gitpod**, you need to publish to the **Open VSX Registry**.
+
+| Editor | Marketplace |
+|--------|-------------|
+| VS Code | [marketplace.visualstudio.com](https://marketplace.visualstudio.com) |
+| Cursor, VSCodium, Gitpod | [open-vsx.org](https://open-vsx.org) |
+
+### Prerequisites
+
+1. **Eclipse Account** - Register at [accounts.eclipse.org](https://accounts.eclipse.org) with your GitHub username matching your open-vsx.org account
+2. **Publisher Agreement** - Sign the Eclipse Publisher Agreement via your open-vsx.org profile settings
+3. **Access Token** - Generate from open-vsx.org for authentication
+
+### Step 1: Create Open VSX Account
+
+1. Go to [open-vsx.org](https://open-vsx.org)
+2. Click **Sign in** (use GitHub account)
+3. Go to your profile settings and sign the **Eclipse Publisher Agreement**
+
+### Step 2: Create Access Token
+
+1. Go to [open-vsx.org/user-settings/tokens](https://open-vsx.org/user-settings/tokens)
+2. Click **Generate New Token**
+3. Give it a description (e.g., "CLI publishing")
+4. **Copy the token immediately** - it's never displayed again after closing the dialog!
+
+> **Security Tip**: Generate separate tokens for different environments (local machine, CI builds, cloud IDEs).
+
+### Step 3: Create Namespace (First Time Only)
+
+Before publishing, create a namespace matching your `publisher` field in package.json:
+
+```bash
+npx ovsx create-namespace joneldominic-dev -p <your-token>
+```
+
+> **Note**: Creating a namespace doesn't automatically verify ownership. To get the "verified" badge, claim it separately through your profile settings.
+
+### Step 4: Publish to Open VSX
+
+```bash
+# Option A: Publish using existing .vsix file (recommended)
+npx ovsx publish file-markers-1.0.0.vsix -p <your-token>
+
+# Option B: Publish from source (runs vscode:prepublish script)
+npx ovsx publish -p <your-token>
+
+# For Yarn projects, add --yarn flag
+npx ovsx publish --yarn -p <your-token>
+```
+
+### Verifying Publication
+
+After publishing, verify at:
+- Open VSX: `https://open-vsx.org/extension/joneldominic-dev/file-markers`
+- The extension should now appear in Cursor's extension search
+
+### Manual Installation (Alternative)
+
+If you haven't published to Open VSX yet, users can install manually:
+
+1. Download the `.vsix` file
+2. In Cursor/VSCodium, press `Cmd+Shift+P` (or `Ctrl+Shift+P`)
+3. Type **"Install from VSIX"**
+4. Select the `.vsix` file
+
+### Publishing to Both Marketplaces
+
+For maximum reach, publish to both marketplaces:
+
+```bash
+# Build the package once
+npx @vscode/vsce package
+
+# Publish to VS Code Marketplace
+npx @vscode/vsce publish
+
+# Publish to Open VSX (use the .vsix created above)
+npx ovsx publish file-markers-1.0.0.vsix -p <your-ovsx-token>
+```
+
+### CI/CD Automation
+
+For automated publishing, use the [publish-vscode-extension](https://github.com/HaaLeo/publish-vscode-extension) GitHub Action:
+
+```yaml
+# .github/workflows/publish.yml
+name: Publish Extension
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - name: Publish to VS Code Marketplace
+        uses: HaaLeo/publish-vscode-extension@v2
+        with:
+          pat: ${{ secrets.VSCE_PAT }}
+          registryUrl: https://marketplace.visualstudio.com
+      - name: Publish to Open VSX
+        uses: HaaLeo/publish-vscode-extension@v2
+        with:
+          pat: ${{ secrets.OVSX_PAT }}
+          registryUrl: https://open-vsx.org
+```
+
+### Open VSX Useful Commands
+
+```bash
+# Create namespace (first time only)
+npx ovsx create-namespace <name> -p <token>
+
+# Publish .vsix file
+npx ovsx publish <file.vsix> -p <token>
+
+# Publish from source
+npx ovsx publish -p <token>
+
+# Get extension info
+npx ovsx get joneldominic-dev.file-markers
+```
+
+### References
+
+- [Open VSX Publishing Guide](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions)
+- [publish-vscode-extension GitHub Action](https://github.com/HaaLeo/publish-vscode-extension)
+
 ## Go further
 
 * Reduce the extension size and improve the startup time by [bundling your extension](https://code.visualstudio.com/api/working-with-extensions/bundling-extension).
