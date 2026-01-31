@@ -9,7 +9,7 @@ Track file and folder status directly in VSCode's Explorer. Right-click to add v
 
 **Perfect for migrations, refactoring projects, and code reviews.**
 
-<!-- ![File Markers Demo](images/demo.gif) -->
+![File Markers Demo](images/demo.gif)
 
 ## Features
 
