@@ -4,6 +4,7 @@
 [![Installs](https://img.shields.io/visual-studio-marketplace/i/joneldominic-dev.file-markers)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
 [![Rating](https://img.shields.io/visual-studio-marketplace/r/joneldominic-dev.file-markers)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
 [![License](https://img.shields.io/github/license/joneldominic/vscode-file-markers)](https://github.com/joneldominic/vscode-file-markers/blob/main/LICENSE)
+[![CI](https://github.com/joneldominic/vscode-file-markers/actions/workflows/ci.yml/badge.svg)](https://github.com/joneldominic/vscode-file-markers/actions/workflows/ci.yml)
 
 Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage.
 

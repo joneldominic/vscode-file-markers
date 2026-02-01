@@ -36,3 +36,8 @@ Thumbs.db
 
 # Claude Code config
 .claude/**
+
+# Test files
+src/test/**
+coverage/**
+.c8/**

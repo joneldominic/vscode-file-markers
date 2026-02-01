@@ -1,0 +1,61 @@
+name: Publish Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Publish target'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - vscode
+          - openvsx
+          - both
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install vsce
+        run: pnpm add -g @vscode/vsce
+
+      - name: Install ovsx
+        run: pnpm add -g ovsx
+
+      - name: Build extension
+        run: pnpm run package
+
+      - name: Package extension
+        run: vsce package --no-dependencies
+
+      - name: Publish to VS Code Marketplace
+        if: ${{ github.event.inputs.target == 'vscode' || github.event.inputs.target == 'both' }}
+        run: vsce publish --no-dependencies
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to OpenVSX
+        if: ${{ github.event.inputs.target == 'openvsx' || github.event.inputs.target == 'both' }}
+        run: |
+          VSIX_FILE=$(ls *.vsix | head -1)
+          ovsx publish "$VSIX_FILE"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
