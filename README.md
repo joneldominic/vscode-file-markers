@@ -40,6 +40,8 @@ See file status at a glance with colored badges in the Explorer panel.
 | Needs Review | ◉ | Blue | Ready for code review |
 | Question | ? | Purple | Need clarification |
 
+> **Note:** Badges are limited to **2 characters** maximum ([VSCode FileDecoration API limitation](https://code.visualstudio.com/api/references/vscode-api#FileDecoration)).
+
 ### Folder Markers with Inheritance
 
 Mark entire folders! With inheritance enabled, unmarked files inside a marked folder automatically display a dimmed version of the parent's marker.
@@ -68,15 +70,43 @@ See marker counts at a glance in the status bar. Click to view detailed statisti
 
 Markers are stored in `.vscode/file-markers.json`. Commit this file to share markers with your team, or add it to `.gitignore` for personal use.
 
+### Custom Marker Types
+
+You can define custom marker types by editing `.vscode/file-markers.json` directly. The file supports both marker assignments and custom marker type definitions:
+
 ```json
 {
-  "version": 1,
+  "markerTypes": [
+    {
+      "id": "done",
+      "badge": "✓",
+      "color": "gitDecoration.addedResourceForeground",
+      "label": "Done"
+    },
+    {
+      "id": "blocked",
+      "badge": "🚫",
+      "color": "errorForeground",
+      "label": "Blocked"
+    }
+  ],
   "markers": {
     "src/old-api.ts": "done",
-    "src/utils": "in-progress"
+    "src/utils": "blocked"
   }
 }
 ```
+
+**Marker Type Properties:**
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `id` | Yes | Unique identifier used in the `markers` object |
+| `badge` | Yes | 1-2 character badge displayed in Explorer (emoji or text) |
+| `color` | Yes | VSCode theme color ID (e.g., `errorForeground`, `gitDecoration.addedResourceForeground`) |
+| `label` | Yes | Display name shown in QuickPick and tooltips |
+
+> **Tip:** Use `File Markers: Open Configuration` command to quickly open the config file. Changes are detected automatically—no need to reload VSCode.
 
 ## Installation
 
@@ -153,27 +183,7 @@ Contributions are welcome! Please open an issue or submit a pull request on [Git
 
 ## Release Notes
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed release notes.
-
-### 1.0.0
-
-- Marker inheritance from folders to children
-- Status bar summary with click-to-view statistics
-- Full feature release
-
-### 0.3.0
-
-- Bulk operations (multi-select support)
-- Keyboard toggle shortcut
-
-### 0.2.0
-
-- Custom marker types via settings
-- Configurable storage location
-
-### 0.1.0
-
-- Initial release with core marking functionality
+See [CHANGELOG.md](CHANGELOG.md) for detailed release history.
 
 ---
 
