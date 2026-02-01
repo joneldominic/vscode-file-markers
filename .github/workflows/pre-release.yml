@@ -1,0 +1,85 @@
+name: Pre-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Pre-release version (e.g., 1.3.0-beta.1)'
+        required: true
+        type: string
+      target:
+        description: 'Publish target'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - vscode
+          - openvsx
+          - both
+
+jobs:
+  pre-release:
+    runs-on: ubuntu-latest
+    # Only allow pre-release from develop branch
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Update version for pre-release
+        run: |
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          echo "Updated version to ${{ github.event.inputs.version }}"
+
+      - name: Install vsce
+        run: pnpm add -g @vscode/vsce
+
+      - name: Install ovsx
+        run: pnpm add -g ovsx
+
+      - name: Build extension
+        run: pnpm run package
+
+      - name: Package extension (pre-release)
+        run: vsce package --no-dependencies --pre-release
+
+      - name: Publish to VS Code Marketplace (pre-release)
+        if: ${{ github.event.inputs.target == 'vscode' || github.event.inputs.target == 'both' }}
+        run: vsce publish --no-dependencies --pre-release
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to OpenVSX (pre-release)
+        if: ${{ github.event.inputs.target == 'openvsx' || github.event.inputs.target == 'both' }}
+        run: |
+          VSIX_FILE=$(ls *.vsix | head -1)
+          ovsx publish "$VSIX_FILE" --pre-release
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-vsix-prerelease
+          path: '*.vsix'
+
+      - name: Create pre-release tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ github.event.inputs.version }}" -m "Pre-release v${{ github.event.inputs.version }}"
+          git push origin "v${{ github.event.inputs.version }}"

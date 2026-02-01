@@ -1,6 +1,8 @@
 name: Publish Extension
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       target:
@@ -47,15 +49,21 @@ jobs:
         run: vsce package --no-dependencies
 
       - name: Publish to VS Code Marketplace
-        if: ${{ github.event.inputs.target == 'vscode' || github.event.inputs.target == 'both' }}
+        if: ${{ github.event_name == 'release' || github.event.inputs.target == 'vscode' || github.event.inputs.target == 'both' }}
         run: vsce publish --no-dependencies
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Publish to OpenVSX
-        if: ${{ github.event.inputs.target == 'openvsx' || github.event.inputs.target == 'both' }}
+        if: ${{ github.event_name == 'release' || github.event.inputs.target == 'openvsx' || github.event.inputs.target == 'both' }}
         run: |
           VSIX_FILE=$(ls *.vsix | head -1)
           ovsx publish "$VSIX_FILE"
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-vsix
+          path: '*.vsix'
