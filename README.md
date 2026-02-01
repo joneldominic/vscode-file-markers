@@ -1,10 +1,17 @@
 # File Markers
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/joneldominic-dev.file-markers)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/joneldominic-dev.file-markers)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/joneldominic-dev.file-markers)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
 [![License](https://img.shields.io/github/license/joneldominic/vscode-file-markers)](https://github.com/joneldominic/vscode-file-markers/blob/main/LICENSE)
 [![CI](https://github.com/joneldominic/vscode-file-markers/actions/workflows/ci.yml/badge.svg)](https://github.com/joneldominic/vscode-file-markers/actions/workflows/ci.yml)
+
+**VS Code Marketplace:**
+[![VS Code Version](https://img.shields.io/visual-studio-marketplace/v/joneldominic-dev.file-markers?label=version)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
+[![VS Code Installs](https://img.shields.io/visual-studio-marketplace/i/joneldominic-dev.file-markers?label=installs)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
+[![VS Code Rating](https://img.shields.io/visual-studio-marketplace/r/joneldominic-dev.file-markers?label=rating)](https://marketplace.visualstudio.com/items?itemName=joneldominic-dev.file-markers)
+
+**Open VSX:**
+[![Open VSX Version](https://img.shields.io/open-vsx/v/joneldominic-dev/file-markers?label=version)](https://open-vsx.org/extension/joneldominic-dev/file-markers)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/joneldominic-dev/file-markers?label=downloads)](https://open-vsx.org/extension/joneldominic-dev/file-markers)
+[![Open VSX Rating](https://img.shields.io/open-vsx/rating/joneldominic-dev/file-markers?label=rating)](https://open-vsx.org/extension/joneldominic-dev/file-markers)
 
 Track file and folder status directly in VSCode's Explorer. Right-click to add visual markers like Done, In Progress, or Pending—no config files to edit, no separate sidebar to manage.
 
