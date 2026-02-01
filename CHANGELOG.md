@@ -5,6 +5,13 @@ All notable changes to the File Markers extension will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.4.2...file-markers-v1.4.3) (2026-02-01)
+
+
+### Fixed
+
+* add comprehensive test coverage for core modules (fix type for force release) ([#24](https://github.com/joneldominic/vscode-file-markers/issues/24)) ([d686b36](https://github.com/joneldominic/vscode-file-markers/commit/d686b36ded13c761f4cca40871660605cc879189))
+
 ## [1.4.2](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.4.1...file-markers-v1.4.2) (2026-02-01)
 
 
