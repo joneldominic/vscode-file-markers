@@ -61,7 +61,7 @@
       },
       {
         "command": "file-markers.toggleMarker",
-        "title": "File Markers: Toggle Marker"
+        "title": "File Markers: Toggle Marker on Current File"
       },
       {
         "command": "file-markers.openConfig",
@@ -70,22 +70,28 @@
       {
         "command": "file-markers.showMarkerStats",
         "title": "File Markers: Show Marker Statistics"
+      },
+      {
+        "command": "file-markers.toggleEnabled",
+        "title": "File Markers: Toggle Enable/Disable"
       }
     ],
     "menus": {
       "explorer/context": [
         {
           "command": "file-markers.setMarker",
-          "group": "2_workspace@1"
+          "group": "2_workspace@1",
+          "when": "config.fileMarkers.enabled"
         },
         {
           "command": "file-markers.removeMarker",
-          "group": "2_workspace@2"
+          "group": "2_workspace@2",
+          "when": "config.fileMarkers.enabled"
         },
         {
           "command": "file-markers.removeMarkersInFolder",
           "group": "2_workspace@3",
-          "when": "explorerResourceIsFolder"
+          "when": "explorerResourceIsFolder && config.fileMarkers.enabled"
         }
       ],
       "commandPalette": [
@@ -112,6 +118,9 @@
         },
         {
           "command": "file-markers.showMarkerStats"
+        },
+        {
+          "command": "file-markers.toggleEnabled"
         }
       ]
     },
@@ -139,6 +148,11 @@
           ],
           "default": "left",
           "description": "Position of the marker statistics in the status bar."
+        },
+        "fileMarkers.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable File Markers. When disabled, markers are hidden but preserved."
         }
       }
     }
@@ -150,6 +164,7 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "vsix": "pnpm run package && vsce package --no-dependencies",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",

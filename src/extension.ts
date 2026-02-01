@@ -38,6 +38,18 @@ export async function activate(
     })
   );
 
+  // Register toggle enabled command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('file-markers.toggleEnabled', async () => {
+      const config = vscode.workspace.getConfiguration('fileMarkers');
+      const currentValue = config.get<boolean>('enabled', true);
+      await config.update('enabled', !currentValue, vscode.ConfigurationTarget.Workspace);
+
+      const newState = !currentValue ? 'enabled' : 'disabled';
+      vscode.window.showInformationMessage(`File Markers ${newState}.`);
+    })
+  );
+
   // Register other commands
   registerCommands(context, storage);
 

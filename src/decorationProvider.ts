@@ -28,7 +28,10 @@ export class MarkerDecorationProvider
     // Listen for configuration changes to refresh all decorations
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration(event => {
-        if (event.affectsConfiguration('fileMarkers.inheritFolderMarkers')) {
+        if (
+          event.affectsConfiguration('fileMarkers.enabled') ||
+          event.affectsConfiguration('fileMarkers.inheritFolderMarkers')
+        ) {
           this.refresh();
         }
       })
@@ -39,6 +42,12 @@ export class MarkerDecorationProvider
     uri: vscode.Uri,
     _token: vscode.CancellationToken
   ): vscode.ProviderResult<vscode.FileDecoration> {
+    // Check if extension is enabled
+    const config = vscode.workspace.getConfiguration('fileMarkers');
+    if (!config.get<boolean>('enabled', true)) {
+      return undefined;
+    }
+
     const effective = this.storage.getEffectiveMarker(uri);
     if (!effective) {
       return undefined;

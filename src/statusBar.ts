@@ -22,6 +22,9 @@ export class StatusBarManager implements vscode.Disposable {
         if (event.affectsConfiguration('fileMarkers.statusBarAlignment')) {
           this.recreateStatusBarItem();
         }
+        if (event.affectsConfiguration('fileMarkers.enabled')) {
+          this.update();
+        }
       })
     );
 
@@ -51,11 +54,21 @@ export class StatusBarManager implements vscode.Disposable {
   }
 
   update(): void {
+    const config = vscode.workspace.getConfiguration('fileMarkers');
+    const isEnabled = config.get<boolean>('enabled', true);
+
+    if (!isEnabled) {
+      this.statusBarItem.text = '$(circle-slash) File Markers: Disabled';
+      this.statusBarItem.tooltip = 'Click to enable or configure File Markers';
+      return;
+    }
+
     const counts = this.storage.getMarkerCountsByType();
     const total = this.storage.getMarkerCount();
 
     if (total === 0) {
       this.statusBarItem.text = '$(bookmark) No markers';
+      this.statusBarItem.tooltip = 'Click to view marker statistics';
       return;
     }
 
@@ -85,52 +98,83 @@ export class StatusBarManager implements vscode.Disposable {
   }
 
   async showStats(): Promise<void> {
-    const counts = this.storage.getMarkerCountsByType();
-    const total = this.storage.getMarkerCount();
+    const config = vscode.workspace.getConfiguration('fileMarkers');
+    const isEnabled = config.get<boolean>('enabled', true);
 
-    if (total === 0) {
-      vscode.window.showInformationMessage('No markers in this workspace.');
-      return;
-    }
-
-    const markerTypes = this.storage.getAllMarkerTypes();
     const items: vscode.QuickPickItem[] = [];
 
-    // Add header
+    // Add action items at the top
     items.push({
-      label: `Total: ${total} marker${total === 1 ? '' : 's'}`,
-      kind: vscode.QuickPickItemKind.Separator,
+      label: isEnabled ? '$(circle-slash) Disable File Markers' : '$(check) Enable File Markers',
+      description: isEnabled ? 'Hide all markers' : 'Show markers again',
+      alwaysShow: true,
     });
 
-    // Add each marker type with count
-    for (const markerType of markerTypes) {
-      const count = counts.get(markerType.id) ?? 0;
-      items.push({
-        label: `${markerType.badge} ${markerType.label}`,
-        description: `${count} file${count === 1 ? '' : 's'}`,
-      });
-    }
+    items.push({
+      label: '$(gear) Open Configuration',
+      description: 'Edit marker types and settings',
+      alwaysShow: true,
+    });
 
-    // Handle any markers with unknown types
-    let unknownCount = 0;
-    const unknownTypes: string[] = [];
-    for (const [markerId, count] of counts) {
-      if (!markerTypes.some(m => m.id === markerId)) {
-        unknownCount += count;
-        unknownTypes.push(markerId);
+    // Add separator before stats (only if enabled and has markers)
+    if (isEnabled) {
+      const counts = this.storage.getMarkerCountsByType();
+      const total = this.storage.getMarkerCount();
+
+      if (total > 0) {
+        items.push({
+          label: '',
+          kind: vscode.QuickPickItemKind.Separator,
+        });
+
+        items.push({
+          label: `Total: ${total} marker${total === 1 ? '' : 's'}`,
+          kind: vscode.QuickPickItemKind.Separator,
+        });
+
+        // Add each marker type with count
+        const markerTypes = this.storage.getAllMarkerTypes();
+        for (const markerType of markerTypes) {
+          const count = counts.get(markerType.id) ?? 0;
+          if (count > 0) {
+            items.push({
+              label: `${markerType.badge} ${markerType.label}`,
+              description: `${count} file${count === 1 ? '' : 's'}`,
+            });
+          }
+        }
+
+        // Handle unknown markers
+        let unknownCount = 0;
+        const unknownTypes: string[] = [];
+        for (const [markerId, count] of counts) {
+          if (!markerTypes.some(m => m.id === markerId)) {
+            unknownCount += count;
+            unknownTypes.push(markerId);
+          }
+        }
+        if (unknownCount > 0) {
+          items.push({
+            label: '$(warning) Unknown markers',
+            description: `${unknownCount} file${unknownCount === 1 ? '' : 's'} (${unknownTypes.join(', ')})`,
+          });
+        }
       }
     }
-    if (unknownCount > 0) {
-      items.push({
-        label: `Unknown markers`,
-        description: `${unknownCount} file${unknownCount === 1 ? '' : 's'} (${unknownTypes.join(', ')})`,
-      });
-    }
 
-    await vscode.window.showQuickPick(items, {
-      title: 'File Marker Statistics',
-      placeHolder: 'Marker breakdown for this workspace',
+    const selected = await vscode.window.showQuickPick(items, {
+      title: 'File Markers',
+      placeHolder: isEnabled ? 'Marker statistics and options' : 'File Markers is disabled',
     });
+
+    // Handle selection
+    if (selected) {
+      if (selected.label.includes('Disable File Markers') || selected.label.includes('Enable File Markers')) {
+        await vscode.commands.executeCommand('file-markers.toggleEnabled');
+      } else if (selected.label.includes('Open Configuration')) {
+        await vscode.commands.executeCommand('file-markers.openConfig');
+      }
+    }
   }
 
   dispose(): void {

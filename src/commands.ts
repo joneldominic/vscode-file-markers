@@ -164,6 +164,15 @@ export function registerCommands(
     vscode.commands.registerCommand(
       'file-markers.toggleMarker',
       () => {
+        // Check if extension is enabled
+        const config = vscode.workspace.getConfiguration('fileMarkers');
+        if (!config.get<boolean>('enabled', true)) {
+          vscode.window.showWarningMessage(
+            'File Markers is disabled. Enable it in settings or run "File Markers: Toggle Enable/Disable".'
+          );
+          return;
+        }
+
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showWarningMessage('No active file to toggle marker.');

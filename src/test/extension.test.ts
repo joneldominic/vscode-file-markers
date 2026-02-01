@@ -32,5 +32,6 @@ suite('Extension Test Suite', () => {
     assert.ok(commands.includes('file-markers.toggleMarker'), 'toggleMarker command should exist');
     assert.ok(commands.includes('file-markers.openConfig'), 'openConfig command should exist');
     assert.ok(commands.includes('file-markers.showMarkerStats'), 'showMarkerStats command should exist');
+    assert.ok(commands.includes('file-markers.toggleEnabled'), 'toggleEnabled command should exist');
   });
 });
