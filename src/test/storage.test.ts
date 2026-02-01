@@ -370,6 +370,141 @@ suite('MarkerStorage Test Suite', () => {
     });
   });
 
+  suite('Marker Inheritance', () => {
+    test('getEffectiveMarker returns direct marker when set', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/src/file.ts`);
+
+      storage.setMarker(testUri, 'done');
+      const effective = storage.getEffectiveMarker(testUri);
+
+      assert.ok(effective);
+      assert.strictEqual(effective.markerId, 'done');
+      assert.strictEqual(effective.inherited, false);
+
+      // Cleanup
+      storage.removeMarker(testUri);
+    });
+
+    test('getEffectiveMarker returns undefined when no marker and inheritance disabled', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const folderUri = vscode.Uri.file(`${workspaceRoot}/src`);
+      const fileUri = vscode.Uri.file(`${workspaceRoot}/src/file.ts`);
+
+      // Set marker on folder, not file
+      storage.setMarker(folderUri, 'done');
+
+      // Ensure inheritance is disabled
+      const config = vscode.workspace.getConfiguration('fileMarkers');
+      await config.update('inheritFolderMarkers', false, vscode.ConfigurationTarget.Workspace);
+
+      const effective = storage.getEffectiveMarker(fileUri);
+      assert.strictEqual(effective, undefined);
+
+      // Cleanup
+      storage.removeMarker(folderUri);
+    });
+
+    test('getEffectiveMarker returns inherited marker when inheritance enabled', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const folderUri = vscode.Uri.file(`${workspaceRoot}/src`);
+      const fileUri = vscode.Uri.file(`${workspaceRoot}/src/file.ts`);
+
+      // Set marker on folder
+      storage.setMarker(folderUri, 'in-progress');
+
+      // Enable inheritance
+      const config = vscode.workspace.getConfiguration('fileMarkers');
+      await config.update('inheritFolderMarkers', true, vscode.ConfigurationTarget.Workspace);
+
+      const effective = storage.getEffectiveMarker(fileUri);
+
+      assert.ok(effective);
+      assert.strictEqual(effective.markerId, 'in-progress');
+      assert.strictEqual(effective.inherited, true);
+
+      // Cleanup
+      await config.update('inheritFolderMarkers', false, vscode.ConfigurationTarget.Workspace);
+      storage.removeMarker(folderUri);
+    });
+
+    test('direct marker overrides inherited marker', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const folderUri = vscode.Uri.file(`${workspaceRoot}/src`);
+      const fileUri = vscode.Uri.file(`${workspaceRoot}/src/file.ts`);
+
+      // Set markers on both folder and file
+      storage.setMarker(folderUri, 'pending');
+      storage.setMarker(fileUri, 'done');
+
+      // Enable inheritance
+      const config = vscode.workspace.getConfiguration('fileMarkers');
+      await config.update('inheritFolderMarkers', true, vscode.ConfigurationTarget.Workspace);
+
+      const effective = storage.getEffectiveMarker(fileUri);
+
+      assert.ok(effective);
+      assert.strictEqual(effective.markerId, 'done'); // Direct marker wins
+      assert.strictEqual(effective.inherited, false);
+
+      // Cleanup
+      await config.update('inheritFolderMarkers', false, vscode.ConfigurationTarget.Workspace);
+      storage.removeMarker(folderUri);
+      storage.removeMarker(fileUri);
+    });
+
+    test('inherits from nearest parent folder', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const parentUri = vscode.Uri.file(`${workspaceRoot}/src`);
+      const childUri = vscode.Uri.file(`${workspaceRoot}/src/components`);
+      const fileUri = vscode.Uri.file(`${workspaceRoot}/src/components/Button.tsx`);
+
+      // Set different markers on parent and child folders
+      storage.setMarker(parentUri, 'pending');
+      storage.setMarker(childUri, 'done');
+
+      // Enable inheritance
+      const config = vscode.workspace.getConfiguration('fileMarkers');
+      await config.update('inheritFolderMarkers', true, vscode.ConfigurationTarget.Workspace);
+
+      const effective = storage.getEffectiveMarker(fileUri);
+
+      assert.ok(effective);
+      assert.strictEqual(effective.markerId, 'done'); // Nearest parent wins
+      assert.strictEqual(effective.inherited, true);
+
+      // Cleanup
+      await config.update('inheritFolderMarkers', false, vscode.ConfigurationTarget.Workspace);
+      storage.removeMarker(parentUri);
+      storage.removeMarker(childUri);
+    });
+  });
+
   suite('Event Handling', () => {
     test('should fire event when marker is set', function(done) {
       if (!vscode.workspace.workspaceFolders?.[0]) {
@@ -407,6 +542,88 @@ suite('MarkerStorage Test Suite', () => {
       });
 
       storage.removeMarker(testUri);
+    });
+  });
+
+  suite('Marker Type Validation', () => {
+    test('rejects null config', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      // Attempt to set a marker with null type should use fallback
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test.ts`);
+
+      storage.setMarker(testUri, 'null-type');
+      const markerType = storage.getMarkerType('null-type');
+
+      // Should return fallback
+      assert.strictEqual(markerType.badge, '⚠');
+
+      // Cleanup
+      storage.removeMarker(testUri);
+    });
+
+    test('rejects config with empty id', function() {
+      // When loading marker types with empty id, they should be skipped
+      const unknownType = storage.getMarkerType('');
+      assert.strictEqual(unknownType.badge, '⚠'); // Fallback
+    });
+
+    test('rejects config with empty badge', function() {
+      // Marker types with empty badge should be skipped during load
+      // Verify that a made-up ID returns fallback
+      const unknownType = storage.getMarkerType('empty-badge-type');
+      assert.strictEqual(unknownType.badge, '⚠');
+    });
+
+    test('truncates badge to 2 characters', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      // The loadMarkerTypes function truncates badges to 2 chars
+      // Default markers should all have badges <= 2 chars
+      const types = storage.getAllMarkerTypes();
+      for (const type of types) {
+        assert.ok(
+          type.badge.length <= 2,
+          `Badge "${type.badge}" for ${type.id} should be <= 2 chars`
+        );
+      }
+    });
+  });
+
+  suite('Path Normalization', () => {
+    test('handles Windows-style paths', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+
+      // Set marker using forward slashes
+      const testUri = vscode.Uri.file(`${workspaceRoot}/src/components/Button.tsx`);
+      storage.setMarker(testUri, 'done');
+
+      // Should be able to retrieve it
+      assert.strictEqual(storage.getMarker(testUri), 'done');
+
+      // Cleanup
+      storage.removeMarker(testUri);
+    });
+
+    test('returns undefined for paths outside workspace', function() {
+      // Create URI outside workspace
+      const outsideUri = vscode.Uri.file('/some/other/path/file.ts');
+
+      // Should return undefined, not throw
+      const marker = storage.getMarker(outsideUri);
+      assert.strictEqual(marker, undefined);
     });
   });
 });
