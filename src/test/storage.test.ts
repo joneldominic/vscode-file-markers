@@ -2,6 +2,8 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { MarkerStorage, FALLBACK_MARKER } from '../storage';
 
+
+
 suite('MarkerStorage Test Suite', () => {
   let storage: MarkerStorage;
 
@@ -291,6 +293,80 @@ suite('MarkerStorage Test Suite', () => {
 
       assert.strictEqual(removedCount, 2);
       assert.strictEqual(storage.getMarkerCount(), 1); // Only other/file.ts remains
+    });
+  });
+
+  suite('Config File Reload', () => {
+    test('should preserve custom marker types when config file is modified externally', async function() {
+      // Skip if no workspace folder
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      // First, set a marker to ensure the config file exists
+      storage.setMarker(testUri, 'done');
+
+      // Wait for the debounced save to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Get storage URI and verify file exists
+      const storageUri = storage.getStorageUri();
+      assert.ok(storageUri, 'Storage URI should exist');
+
+      // Read current config file
+      const currentContent = await vscode.workspace.fs.readFile(storageUri!);
+      const currentData = JSON.parse(Buffer.from(currentContent).toString('utf8'));
+
+      // Add a custom marker type to the config file (simulating external edit)
+      const customMarkerType = {
+        id: 'custom-test',
+        badge: '⚡',
+        color: 'terminal.ansiMagenta',
+        label: 'Custom Test',
+      };
+      currentData.markerTypes.push(customMarkerType);
+
+      // Write the modified config back
+      await vscode.workspace.fs.writeFile(
+        storageUri!,
+        Buffer.from(JSON.stringify(currentData, null, 2), 'utf8')
+      );
+
+      // Wait for file watcher to reload (if implemented)
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Now set another marker - this triggers save which might overwrite custom types
+      const testUri2 = vscode.Uri.file(`${workspaceRoot}/test-file2.ts`);
+      storage.setMarker(testUri2, 'pending');
+
+      // Wait for the debounced save to complete
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Read the config file again
+      const finalContent = await vscode.workspace.fs.readFile(storageUri!);
+      const finalData = JSON.parse(Buffer.from(finalContent).toString('utf8'));
+
+      // The custom marker type should still be present
+      const hasCustomMarker = finalData.markerTypes.some(
+        (m: { id: string }) => m.id === 'custom-test'
+      );
+
+      assert.strictEqual(
+        hasCustomMarker,
+        true,
+        'Custom marker type should be preserved after setting another marker'
+      );
+
+      // Also verify the custom marker type is available in storage
+      assert.strictEqual(
+        storage.isKnownMarkerType('custom-test'),
+        true,
+        'Custom marker type should be recognized by storage'
+      );
     });
   });
 

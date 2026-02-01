@@ -21,6 +21,9 @@ export class MarkerStorage implements vscode.Disposable {
   private storageUri: vscode.Uri | undefined;
   private disposables: vscode.Disposable[] = [];
   private writeDebounceTimer: NodeJS.Timeout | undefined;
+  private configWatcher: vscode.FileSystemWatcher | undefined;
+  private reloadDebounceTimer: NodeJS.Timeout | undefined;
+  private lastSavedContent: string | undefined;
 
   private readonly _onDidChangeMarkers = new vscode.EventEmitter<MarkerChangeEvent>();
   readonly onDidChangeMarkers = this._onDidChangeMarkers.event;
@@ -46,24 +49,53 @@ export class MarkerStorage implements vscode.Disposable {
       STORAGE_FILENAME
     );
 
+    // Dispose old watcher if exists
+    this.configWatcher?.dispose();
+
+    // Create file system watcher for config file
+    this.configWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(workspaceFolder, '.vscode/file-markers.json')
+    );
+
+    this.disposables.push(this.configWatcher);
+
+    // Reload when file is changed externally
+    this.configWatcher.onDidChange(() => this.scheduleReload());
+    this.configWatcher.onDidCreate(() => this.scheduleReload());
+    this.configWatcher.onDidDelete(() => this.scheduleReload());
+
     await this.load();
   }
 
-  private async load(): Promise<void> {
+  /**
+   * Load markers from storage. Returns true if data changed, false otherwise.
+   */
+  private async load(): Promise<boolean> {
     if (!this.storageUri) {
-      return;
+      return false;
     }
 
     try {
       const content = await vscode.workspace.fs.readFile(this.storageUri);
-      const data = JSON.parse(Buffer.from(content).toString('utf8'));
+      const contentStr = Buffer.from(content).toString('utf8');
 
+      // Skip reload if this is the content we just saved
+      if (this.lastSavedContent && contentStr === this.lastSavedContent) {
+        return false;
+      }
+      const data = JSON.parse(contentStr);
       this.loadMarkerTypes(data.markerTypes || DEFAULT_MARKER_TYPES);
       this.markers = new Map(Object.entries(data.markers || {}));
+      // Clear saved content since we've now loaded external changes
+      this.lastSavedContent = undefined;
+      return true;
     } catch {
       // File doesn't exist or is invalid - use defaults
+      const hadData = this.markers.size > 0 || this.markerTypes.size > 0;
       this.loadMarkerTypes(DEFAULT_MARKER_TYPES);
       this.markers.clear();
+      this.lastSavedContent = undefined;
+      return hadData;
     }
   }
 
@@ -122,6 +154,8 @@ export class MarkerStorage implements vscode.Disposable {
       // Directory may already exist
     }
 
+    // Record what we're saving so we can skip reloads that match our own writes
+    this.lastSavedContent = content.toString();
     await vscode.workspace.fs.writeFile(this.storageUri, content);
   }
 
@@ -132,6 +166,28 @@ export class MarkerStorage implements vscode.Disposable {
     this.writeDebounceTimer = setTimeout(() => {
       this.save().catch(err => {
         console.error('Failed to save markers:', err);
+      });
+    }, 100);
+  }
+
+  /**
+   * Schedule a reload of the config file (debounced to avoid conflicts with our own writes)
+   */
+  private scheduleReload(): void {
+    if (this.reloadDebounceTimer) {
+      clearTimeout(this.reloadDebounceTimer);
+    }
+    this.reloadDebounceTimer = setTimeout(() => {
+      this.load().then((changed) => {
+        if (changed) {
+          // Notify that markers may have changed (types may have changed too)
+          const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+          if (workspaceFolder) {
+            this._onDidChangeMarkers.fire({ uri: workspaceFolder.uri, markerId: undefined });
+          }
+        }
+      }).catch(err => {
+        console.error('Failed to reload markers:', err);
       });
     }, 100);
   }
@@ -391,6 +447,10 @@ export class MarkerStorage implements vscode.Disposable {
     if (this.writeDebounceTimer) {
       clearTimeout(this.writeDebounceTimer);
     }
+    if (this.reloadDebounceTimer) {
+      clearTimeout(this.reloadDebounceTimer);
+    }
+    this.configWatcher?.dispose();
     this._onDidChangeMarkers.dispose();
     this.disposables.forEach(d => d.dispose());
   }
