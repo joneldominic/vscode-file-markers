@@ -5,10 +5,38 @@ All notable changes to the File Markers extension will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.2.0...file-markers-v1.3.0) (2026-02-01)
+## [1.4.0](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.3.0...file-markers-v1.4.0) (2026-02-01)
 
-> **Note**: Starting with v1.3.0, this changelog is managed by [release-please](https://github.com/googleapis/release-please).
-> Entries are auto-generated from conventional commits and there may be duplcate entries from previous release.
+> **Note**: Starting with v1.4.0, this changelog is managed by [release-please](https://github.com/googleapis/release-please).
+> Entries are auto-generated from conventional commits and there may be duplicate entries from previous release versions.
+
+### Added
+
+* add automated versioning with release-please and conventional commits ([#9](https://github.com/joneldominic/vscode-file-markers/issues/9)) ([8a7962c](https://github.com/joneldominic/vscode-file-markers/commit/8a7962cd28499a5c521560cb035926069669e929))
+* add fileMarkers.enabled setting to toggle extension ([dfadd16](https://github.com/joneldominic/vscode-file-markers/commit/dfadd16d16a5d9f2c76a0a425bb8cc32634fe667))
+* implement MVP v0.1.0 with file markers functionality ([6ce904f](https://github.com/joneldominic/vscode-file-markers/commit/6ce904f9987d5bb75e7cf313ccc73ef1ab26fd84))
+* implement v0.2.0 with configurable marker types ([f7daeeb](https://github.com/joneldominic/vscode-file-markers/commit/f7daeeb20906789e5bff9e9fae8bb4e56c8cbc4c))
+* implement v0.3.0 with bulk operations and keyboard toggle ([f8da76d](https://github.com/joneldominic/vscode-file-markers/commit/f8da76da8492b29cffe04a03d8cee8217b88a306))
+* implement v1.0.0 with marker inheritance and status bar ([bfedcb3](https://github.com/joneldominic/vscode-file-markers/commit/bfedcb304df4ab7b4ef3e19412ff68a3eacd40c2))
+* init project ([331119e](https://github.com/joneldominic/vscode-file-markers/commit/331119ed0d9c40501a1de63409c060d1ff71efe0))
+
+
+### Fixed
+
+* clarify changelog and improve ci/cd workflow ([#14](https://github.com/joneldominic/vscode-file-markers/issues/14)) ([8aa8bb0](https://github.com/joneldominic/vscode-file-markers/commit/8aa8bb0588b04239e588df9b8793829a84ace52e))
+* configure release-please to target main branch ([e904216](https://github.com/joneldominic/vscode-file-markers/commit/e904216e42899553002f1610d0fad1607dba983c))
+* prevent config file from being overwritten with default values ([78b162d](https://github.com/joneldominic/vscode-file-markers/commit/78b162d5f76f013506b782accbde2084d053504f))
+
+
+### Documentation
+
+* add custom marker types documentation and badge limit note ([b2ffb13](https://github.com/joneldominic/vscode-file-markers/commit/b2ffb137e42540a5f6f19e201f9f7a198ec00635))
+* add demo GIF to README ([2b451ae](https://github.com/joneldominic/vscode-file-markers/commit/2b451ae280f0971468d418e2cd6eba90e0641802))
+* add Open VSX badges and update plan progress ([18343d7](https://github.com/joneldominic/vscode-file-markers/commit/18343d761c96e05d237e4610e0c68c40629d4d49))
+* add publishing guides for VS Code Marketplace and Open VSX ([8d35804](https://github.com/joneldominic/vscode-file-markers/commit/8d358048f5b5186ea41a7c318e3f012fac50734c))
+* prepare extension for marketplace publishing ([41cb960](https://github.com/joneldominic/vscode-file-markers/commit/41cb9600752d9778c15b2b32c735e9a6f8e6aab8))
+
+## [1.3.0](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.2.0...file-markers-v1.3.0) (2026-02-01)
 
 ### Added
 
