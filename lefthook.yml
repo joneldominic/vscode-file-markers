@@ -1,0 +1,15 @@
+# Lefthook configuration for git hooks
+# https://github.com/evilmartians/lefthook
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-commit:
+  parallel: true
+  commands:
+    check-types:
+      run: pnpm run check-types
+    lint:
+      run: pnpm run lint
