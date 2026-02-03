@@ -159,7 +159,7 @@ export function registerCommands(
   );
 
   // Toggle Marker command (keyboard shortcut)
-  // Cycles: no marker → done → in-progress → pending → no marker
+  // Cycles through all configured markers, then removes
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'file-markers.toggleMarker',
@@ -182,8 +182,16 @@ export function registerCommands(
         const uri = editor.document.uri;
         const currentMarkerId = storage.getMarker(uri);
 
-        // Define cycle order (uses first 3 default marker IDs)
-        const cycleOrder = ['done', 'in-progress', 'pending'];
+        // Get all configured marker types for cycling
+        const allMarkerTypes = storage.getAllMarkerTypes();
+        const cycleOrder = allMarkerTypes.map(m => m.id);
+
+        if (cycleOrder.length === 0) {
+          vscode.window.showWarningMessage(
+            'No marker types configured. Open configuration to add marker types.'
+          );
+          return;
+        }
 
         if (!currentMarkerId) {
           // No marker → apply first in cycle
@@ -191,7 +199,7 @@ export function registerCommands(
         } else {
           const currentIndex = cycleOrder.indexOf(currentMarkerId);
           if (currentIndex === -1) {
-            // Current marker not in cycle → remove it
+            // Current marker not in cycle (unknown/removed type) → remove it
             storage.removeMarker(uri);
           } else if (currentIndex === cycleOrder.length - 1) {
             // Last in cycle → remove marker

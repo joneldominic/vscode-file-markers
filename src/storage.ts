@@ -64,6 +64,15 @@ export class MarkerStorage implements vscode.Disposable {
     this.configWatcher.onDidCreate(() => this.scheduleReload());
     this.configWatcher.onDidDelete(() => this.scheduleReload());
 
+    // Also listen for when the config file is saved within VSCode (more reliable than file watcher)
+    this.disposables.push(
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (this.storageUri && doc.uri.fsPath === this.storageUri.fsPath) {
+          this.scheduleReload();
+        }
+      })
+    );
+
     await this.load();
   }
 
