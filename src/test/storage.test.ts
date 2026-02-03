@@ -7,13 +7,30 @@ import { MarkerStorage, FALLBACK_MARKER } from '../storage';
 suite('MarkerStorage Test Suite', () => {
   let storage: MarkerStorage;
 
+  // Helper to clean up config file for test isolation
+  async function cleanupConfigFile(): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const configFile = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'file-markers.json');
+      try {
+        await vscode.workspace.fs.delete(configFile);
+      } catch {
+        // File may not exist, ignore
+      }
+    }
+  }
+
   setup(async () => {
+    // Clean up any leftover config from previous tests
+    await cleanupConfigFile();
     storage = new MarkerStorage();
     await storage.initialize();
   });
 
-  teardown(() => {
+  teardown(async () => {
     storage.dispose();
+    // Clean up after test
+    await cleanupConfigFile();
   });
 
   suite('Marker Types', () => {
@@ -68,6 +85,68 @@ suite('MarkerStorage Test Suite', () => {
     test('isKnownMarkerType should return false for unknown types', () => {
       assert.strictEqual(storage.isKnownMarkerType('non-existent'), false);
       assert.strictEqual(storage.isKnownMarkerType(''), false);
+    });
+
+    test('getAllMarkerTypes returns all 6 default markers in order', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const types = storage.getAllMarkerTypes();
+      const ids = types.map(t => t.id);
+
+      // Should have at least 6 default markers (may have more from previous tests)
+      assert.ok(types.length >= 6, `Should have at least 6 marker types, got ${types.length}`);
+
+      // Should contain all default markers in order (at the start)
+      const defaultMarkers = ['done', 'in-progress', 'pending', 'important', 'review', 'question'];
+      for (let i = 0; i < defaultMarkers.length; i++) {
+        assert.strictEqual(
+          ids[i],
+          defaultMarkers[i],
+          `Marker at position ${i} should be "${defaultMarkers[i]}", got "${ids[i]}"`
+        );
+      }
+    });
+
+    test('getAllMarkerTypes order matches config file order', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const storageUri = storage.getStorageUri();
+      if (!storageUri) {
+        this.skip();
+        return;
+      }
+
+      // Ensure config file exists by setting a marker
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/order-test.ts`);
+      storage.setMarker(testUri, 'done');
+
+      // Wait for save
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Read config file to get the order
+      const content = await vscode.workspace.fs.readFile(storageUri);
+      const data = JSON.parse(Buffer.from(content).toString('utf8'));
+      const configIds = data.markerTypes.map((m: { id: string }) => m.id);
+
+      // Get order from storage
+      const storageIds = storage.getAllMarkerTypes().map(t => t.id);
+
+      // Orders should match
+      assert.deepStrictEqual(
+        storageIds,
+        configIds,
+        'getAllMarkerTypes order should match config file order'
+      );
+
+      // Cleanup
+      storage.removeMarker(testUri);
     });
   });
 
