@@ -6,6 +6,11 @@ import { MarkerStorage, FALLBACK_MARKER } from './storage';
  */
 const INHERITED_MARKER_COLOR = new vscode.ThemeColor('disabledForeground');
 
+/**
+ * Badge for files with line highlights (when no file marker is present)
+ */
+const LINE_HIGHLIGHT_BADGE = '≡';
+
 export class MarkerDecorationProvider
   implements vscode.FileDecorationProvider, vscode.Disposable
 {
@@ -21,6 +26,13 @@ export class MarkerDecorationProvider
         // When inheritance is enabled, any marker change could affect children
         // so we refresh all decorations. When disabled, we could optimize
         // but refreshing all is simpler and still fast enough.
+        this.refresh();
+      })
+    );
+
+    // Listen for line highlight changes
+    this.disposables.push(
+      storage.onDidChangeLineHighlights(() => {
         this.refresh();
       })
     );
@@ -48,41 +60,67 @@ export class MarkerDecorationProvider
       return undefined;
     }
 
+    // Check for file marker
     const effective = this.storage.getEffectiveMarker(uri);
-    if (!effective) {
+    const hasLineHighlights = this.storage.hasLineHighlights(uri);
+
+    // If no marker and no line highlights, return nothing
+    if (!effective && !hasLineHighlights) {
       return undefined;
     }
 
-    const { markerId, inherited } = effective;
-    const marker = this.storage.getMarkerType(markerId);
-    const isUnknown = marker.id === FALLBACK_MARKER.id;
+    // Build decoration based on what we have
+    if (effective) {
+      // Has file marker (may also have line highlights)
+      const { markerId, inherited } = effective;
+      const marker = this.storage.getMarkerType(markerId);
+      const isUnknown = marker.id === FALLBACK_MARKER.id;
 
-    // Use grayed color for inherited markers, normal color for direct markers
-    let color: vscode.ThemeColor | undefined;
-    if (isUnknown) {
-      color = undefined;
-    } else if (inherited) {
-      color = INHERITED_MARKER_COLOR;
+      // Use grayed color for inherited markers, normal color for direct markers
+      let color: vscode.ThemeColor | undefined;
+      if (isUnknown) {
+        color = undefined;
+      } else if (inherited) {
+        color = INHERITED_MARKER_COLOR;
+      } else {
+        color = marker.color;
+      }
+
+      // Build tooltip
+      let tooltip: string;
+      if (isUnknown) {
+        tooltip = `Unknown marker type: "${markerId}"`;
+      } else if (inherited) {
+        tooltip = `File Marker: ${marker.label} (inherited from folder)`;
+      } else {
+        tooltip = `File Marker: ${marker.label}`;
+      }
+
+      // Build badge - append line highlight indicator if present and space allows
+      let badge = marker.badge;
+      if (hasLineHighlights) {
+        tooltip = `${tooltip} | Has line highlights`;
+        // VSCode badges are max 2 chars, append indicator if we have room
+        if (badge.length < 2) {
+          badge = badge + LINE_HIGHLIGHT_BADGE;
+        }
+      }
+
+      return {
+        badge,
+        color,
+        tooltip,
+        propagate: false,
+      };
     } else {
-      color = marker.color;
+      // Only line highlights, no file marker
+      return {
+        badge: LINE_HIGHLIGHT_BADGE,
+        color: new vscode.ThemeColor('editorInfo.foreground'),
+        tooltip: 'Has line highlights',
+        propagate: false,
+      };
     }
-
-    // Build tooltip
-    let tooltip: string;
-    if (isUnknown) {
-      tooltip = `Unknown marker type: "${markerId}"`;
-    } else if (inherited) {
-      tooltip = `File Marker: ${marker.label} (inherited from folder)`;
-    } else {
-      tooltip = `File Marker: ${marker.label}`;
-    }
-
-    return {
-      badge: marker.badge,
-      color,
-      tooltip,
-      propagate: false,
-    };
   }
 
   refresh(): void {

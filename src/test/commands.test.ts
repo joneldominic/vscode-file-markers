@@ -326,6 +326,144 @@ suite('Commands Test Suite', () => {
     });
   });
 
+  suite('toggleLineHighlight command', () => {
+    // Helper to read line highlights from config file
+    async function getLineHighlightsFromConfig(filePath: string): Promise<Array<{startLine: number, endLine: number, typeId: string}>> {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        return [];
+      }
+      const configFile = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'file-markers.json');
+      try {
+        const content = await vscode.workspace.fs.readFile(configFile);
+        const data = JSON.parse(Buffer.from(content).toString('utf8'));
+        return data.lineHighlights?.[filePath] || [];
+      } catch {
+        return [];
+      }
+    }
+
+    test('highlights current line when no selection', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceFolder = vscode.workspace.workspaceFolders[0];
+      const testFile = vscode.Uri.joinPath(workspaceFolder.uri, 'line-highlight-cursor-test.txt');
+
+      // Create test file with multiple lines
+      await vscode.workspace.fs.writeFile(
+        testFile,
+        Buffer.from('line 1\nline 2\nline 3\nline 4\nline 5')
+      );
+
+      try {
+        // Open the test file
+        const doc = await vscode.workspace.openTextDocument(testFile);
+        const editor = await vscode.window.showTextDocument(doc);
+
+        // Move cursor to line 3 (0-indexed: line 2) without selection
+        const position = new vscode.Position(2, 0);
+        editor.selection = new vscode.Selection(position, position);
+
+        // Verify no selection
+        assert.ok(editor.selection.isEmpty, 'Selection should be empty');
+
+        // Execute toggle command
+        await vscode.commands.executeCommand('file-markers.toggleLineHighlight');
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for debounced save
+
+        // Verify line highlight was set in config file
+        const highlights = await getLineHighlightsFromConfig('line-highlight-cursor-test.txt');
+        assert.strictEqual(highlights.length, 1, 'Should have 1 line highlight');
+        assert.strictEqual(highlights[0].startLine, 3, 'Start line should be 3 (1-indexed)');
+        assert.strictEqual(highlights[0].endLine, 3, 'End line should be 3 (single line)');
+        assert.strictEqual(highlights[0].typeId, 'highlight-yellow', 'Should be first highlight type');
+
+        // Toggle again to cycle to next color
+        await vscode.commands.executeCommand('file-markers.toggleLineHighlight');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const highlights2 = await getLineHighlightsFromConfig('line-highlight-cursor-test.txt');
+        assert.strictEqual(highlights2.length, 1, 'Should still have 1 highlight');
+        assert.strictEqual(highlights2[0].typeId, 'highlight-green', 'Should cycle to green');
+
+      } finally {
+        // Cleanup
+        await vscode.commands.executeCommand('file-markers.removeAllLineHighlightsInFile');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        try {
+          await vscode.workspace.fs.delete(testFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+
+    test('highlights selected lines when selection exists', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceFolder = vscode.workspace.workspaceFolders[0];
+      const testFile = vscode.Uri.joinPath(workspaceFolder.uri, 'line-highlight-selection-test.txt');
+
+      // Create test file with multiple lines
+      await vscode.workspace.fs.writeFile(
+        testFile,
+        Buffer.from('line 1\nline 2\nline 3\nline 4\nline 5')
+      );
+
+      try {
+        // Ensure config file exists (initializes extension storage properly)
+        await vscode.commands.executeCommand('file-markers.openConfig');
+        await vscode.commands.executeCommand('workbench.action.files.save');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+
+        // Open the test file
+        const doc = await vscode.workspace.openTextDocument(testFile);
+        const editor = await vscode.window.showTextDocument(doc);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait for editor to fully initialize
+
+        // Select lines 2-4 (0-indexed: lines 1-3)
+        const startPos = new vscode.Position(1, 0);
+        const endPos = new vscode.Position(3, 6); // end of "line 4"
+        editor.selection = new vscode.Selection(startPos, endPos);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait for selection to register
+
+        // Verify selection exists
+        assert.ok(!editor.selection.isEmpty, 'Selection should not be empty');
+        assert.strictEqual(editor.selection.start.line, 1, 'Selection should start at line 1 (0-indexed)');
+        assert.strictEqual(editor.selection.end.line, 3, 'Selection should end at line 3 (0-indexed)');
+
+        // Execute toggle command
+        await vscode.commands.executeCommand('file-markers.toggleLineHighlight');
+        await new Promise(resolve => setTimeout(resolve, 600)); // Wait for debounced save
+
+        // Verify line highlight was set for the range in config file
+        const highlights = await getLineHighlightsFromConfig('line-highlight-selection-test.txt');
+        assert.strictEqual(highlights.length, 1, 'Should have 1 line highlight');
+        assert.strictEqual(highlights[0].startLine, 2, 'Start line should be 2 (1-indexed)');
+        assert.strictEqual(highlights[0].endLine, 4, 'End line should be 4 (1-indexed)');
+
+      } finally {
+        // Cleanup
+        await vscode.commands.executeCommand('file-markers.removeAllLineHighlightsInFile');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        try {
+          await vscode.workspace.fs.delete(testFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+  });
+
   suite('openConfig command', () => {
     test('creates config file if it does not exist', async function() {
       if (!vscode.workspace.workspaceFolders?.[0]) {
