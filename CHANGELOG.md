@@ -5,6 +5,13 @@ All notable changes to the File Markers extension will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.4.4...file-markers-v1.5.0) (2026-02-10)
+
+
+### Added
+
+* add line highlighting feature with keyboard toggle support ([#29](https://github.com/joneldominic/vscode-file-markers/issues/29)) ([#30](https://github.com/joneldominic/vscode-file-markers/issues/30)) ([172deb0](https://github.com/joneldominic/vscode-file-markers/commit/172deb092ffefd2c5e23d5bb6084ddfabd772ba0))
+
 ## [1.4.4](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.4.3...file-markers-v1.4.4) (2026-02-01)
 
 
