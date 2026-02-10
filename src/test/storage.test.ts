@@ -7,13 +7,30 @@ import { MarkerStorage, FALLBACK_MARKER } from '../storage';
 suite('MarkerStorage Test Suite', () => {
   let storage: MarkerStorage;
 
+  // Helper to clean up config file for test isolation
+  async function cleanupConfigFile(): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const configFile = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'file-markers.json');
+      try {
+        await vscode.workspace.fs.delete(configFile);
+      } catch {
+        // File may not exist, ignore
+      }
+    }
+  }
+
   setup(async () => {
+    // Clean up any leftover config from previous tests
+    await cleanupConfigFile();
     storage = new MarkerStorage();
     await storage.initialize();
   });
 
-  teardown(() => {
+  teardown(async () => {
     storage.dispose();
+    // Clean up after test
+    await cleanupConfigFile();
   });
 
   suite('Marker Types', () => {
@@ -68,6 +85,68 @@ suite('MarkerStorage Test Suite', () => {
     test('isKnownMarkerType should return false for unknown types', () => {
       assert.strictEqual(storage.isKnownMarkerType('non-existent'), false);
       assert.strictEqual(storage.isKnownMarkerType(''), false);
+    });
+
+    test('getAllMarkerTypes returns all 6 default markers in order', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const types = storage.getAllMarkerTypes();
+      const ids = types.map(t => t.id);
+
+      // Should have at least 6 default markers (may have more from previous tests)
+      assert.ok(types.length >= 6, `Should have at least 6 marker types, got ${types.length}`);
+
+      // Should contain all default markers in order (at the start)
+      const defaultMarkers = ['done', 'in-progress', 'pending', 'important', 'review', 'question'];
+      for (let i = 0; i < defaultMarkers.length; i++) {
+        assert.strictEqual(
+          ids[i],
+          defaultMarkers[i],
+          `Marker at position ${i} should be "${defaultMarkers[i]}", got "${ids[i]}"`
+        );
+      }
+    });
+
+    test('getAllMarkerTypes order matches config file order', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const storageUri = storage.getStorageUri();
+      if (!storageUri) {
+        this.skip();
+        return;
+      }
+
+      // Ensure config file exists by setting a marker
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/order-test.ts`);
+      storage.setMarker(testUri, 'done');
+
+      // Wait for save
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Read config file to get the order
+      const content = await vscode.workspace.fs.readFile(storageUri);
+      const data = JSON.parse(Buffer.from(content).toString('utf8'));
+      const configIds = data.markerTypes.map((m: { id: string }) => m.id);
+
+      // Get order from storage
+      const storageIds = storage.getAllMarkerTypes().map(t => t.id);
+
+      // Orders should match
+      assert.deepStrictEqual(
+        storageIds,
+        configIds,
+        'getAllMarkerTypes order should match config file order'
+      );
+
+      // Cleanup
+      storage.removeMarker(testUri);
     });
   });
 
@@ -624,6 +703,329 @@ suite('MarkerStorage Test Suite', () => {
       // Should return undefined, not throw
       const marker = storage.getMarker(outsideUri);
       assert.strictEqual(marker, undefined);
+    });
+  });
+
+  suite('Line Highlights', () => {
+    test('should set and get line highlights', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+
+      const highlights = storage.getLineHighlights(testUri);
+      assert.strictEqual(highlights.length, 1);
+      assert.strictEqual(highlights[0].startLine, 10);
+      assert.strictEqual(highlights[0].endLine, 20);
+      assert.strictEqual(highlights[0].typeId, 'highlight-yellow');
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('should remove overlapping highlights when setting new one', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri, 15, 25, 'highlight-blue');
+
+      const highlights = storage.getLineHighlights(testUri);
+      assert.strictEqual(highlights.length, 1);
+      assert.strictEqual(highlights[0].typeId, 'highlight-blue');
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('should remove specific line highlight', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri, 30, 40, 'highlight-blue');
+
+      storage.removeLineHighlight(testUri, 10, 20);
+
+      const highlights = storage.getLineHighlights(testUri);
+      assert.strictEqual(highlights.length, 1);
+      assert.strictEqual(highlights[0].startLine, 30);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('should remove all line highlights in file', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri, 30, 40, 'highlight-blue');
+
+      storage.removeAllLineHighlightsInFile(testUri);
+
+      const highlights = storage.getLineHighlights(testUri);
+      assert.strictEqual(highlights.length, 0);
+    });
+
+    test('should report hasLineHighlights correctly', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      assert.strictEqual(storage.hasLineHighlights(testUri), false);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+      assert.strictEqual(storage.hasLineHighlights(testUri), true);
+
+      storage.removeAllLineHighlightsInFile(testUri);
+      assert.strictEqual(storage.hasLineHighlights(testUri), false);
+    });
+
+    test('should persist line highlights to file', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+
+      // Wait for debounced save
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Read the file and verify
+      const storageUri = storage.getStorageUri();
+      assert.ok(storageUri, 'Storage URI should exist');
+
+      const content = await vscode.workspace.fs.readFile(storageUri!);
+      const data = JSON.parse(Buffer.from(content).toString('utf8'));
+
+      assert.ok(data.lineHighlights, 'lineHighlights should exist');
+      assert.ok(
+        data.lineHighlights['test-file.ts'],
+        'test-file.ts should have highlights'
+      );
+      assert.strictEqual(data.lineHighlights['test-file.ts'].length, 1);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('should sort highlights by start line', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      // Add highlights out of order
+      storage.setLineHighlight(testUri, 50, 60, 'highlight-blue');
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri, 30, 40, 'highlight-green');
+
+      const highlights = storage.getLineHighlights(testUri);
+      assert.strictEqual(highlights.length, 3);
+      assert.strictEqual(highlights[0].startLine, 10);
+      assert.strictEqual(highlights[1].startLine, 30);
+      assert.strictEqual(highlights[2].startLine, 50);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('should fire event when line highlight is set', function(done) {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      const disposable = storage.onDidChangeLineHighlights(event => {
+        assert.ok(event.uri);
+        disposable.dispose();
+        storage.removeAllLineHighlightsInFile(testUri);
+        done();
+      });
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+    });
+
+    test('should fire event when line highlight is removed', function(done) {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+
+      const disposable = storage.onDidChangeLineHighlights(event => {
+        assert.ok(event.uri);
+        disposable.dispose();
+        done();
+      });
+
+      storage.removeLineHighlight(testUri, 10, 20);
+    });
+
+    test('should return empty array for file outside workspace', function() {
+      const outsideUri = vscode.Uri.file('/some/other/path/file.ts');
+      const highlights = storage.getLineHighlights(outsideUri);
+      assert.strictEqual(highlights.length, 0);
+    });
+
+    test('should have default line highlight types loaded', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const types = storage.getAllLineHighlightTypes();
+      assert.ok(types.length >= 5, 'Should have at least 5 default line highlight types');
+    });
+
+    test('should include yellow highlight type', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const yellowType = storage.getLineHighlightType('highlight-yellow');
+      assert.ok(yellowType, 'Should have yellow highlight type');
+      assert.strictEqual(yellowType!.label, 'Yellow Highlight');
+    });
+
+    test('getAllFilesWithLineHighlights returns correct files', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri1 = vscode.Uri.file(`${workspaceRoot}/file1.ts`);
+      const testUri2 = vscode.Uri.file(`${workspaceRoot}/file2.ts`);
+
+      storage.setLineHighlight(testUri1, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri2, 5, 15, 'highlight-blue');
+
+      const files = storage.getAllFilesWithLineHighlights();
+      assert.strictEqual(files.length, 2);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri1);
+      storage.removeAllLineHighlightsInFile(testUri2);
+    });
+
+    test('getLineHighlightCount returns correct total count', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri1 = vscode.Uri.file(`${workspaceRoot}/file1.ts`);
+      const testUri2 = vscode.Uri.file(`${workspaceRoot}/file2.ts`);
+
+      assert.strictEqual(storage.getLineHighlightCount(), 0);
+
+      storage.setLineHighlight(testUri1, 10, 20, 'highlight-yellow');
+      assert.strictEqual(storage.getLineHighlightCount(), 1);
+
+      storage.setLineHighlight(testUri1, 30, 40, 'highlight-blue');
+      assert.strictEqual(storage.getLineHighlightCount(), 2);
+
+      storage.setLineHighlight(testUri2, 5, 15, 'highlight-green');
+      assert.strictEqual(storage.getLineHighlightCount(), 3);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri1);
+      storage.removeAllLineHighlightsInFile(testUri2);
+    });
+
+    test('removeAllLineHighlights clears all highlights and returns count', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri1 = vscode.Uri.file(`${workspaceRoot}/file1.ts`);
+      const testUri2 = vscode.Uri.file(`${workspaceRoot}/file2.ts`);
+
+      storage.setLineHighlight(testUri1, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri1, 30, 40, 'highlight-blue');
+      storage.setLineHighlight(testUri2, 5, 15, 'highlight-green');
+
+      const removedCount = storage.removeAllLineHighlights();
+
+      assert.strictEqual(removedCount, 3);
+      assert.strictEqual(storage.getLineHighlightCount(), 0);
+      assert.strictEqual(storage.hasLineHighlights(testUri1), false);
+      assert.strictEqual(storage.hasLineHighlights(testUri2), false);
+    });
+
+    test('removeAllLineHighlights returns 0 when no highlights', function() {
+      const removedCount = storage.removeAllLineHighlights();
+      assert.strictEqual(removedCount, 0);
+    });
+
+    test('non-overlapping highlights are preserved', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/test-file.ts`);
+
+      // Add non-overlapping highlights
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+      storage.setLineHighlight(testUri, 30, 40, 'highlight-blue');
+      storage.setLineHighlight(testUri, 50, 60, 'highlight-green');
+
+      const highlights = storage.getLineHighlights(testUri);
+      assert.strictEqual(highlights.length, 3);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('getLineHighlightType returns undefined for unknown type', function() {
+      const unknownType = storage.getLineHighlightType('non-existent-type');
+      assert.strictEqual(unknownType, undefined);
     });
   });
 });

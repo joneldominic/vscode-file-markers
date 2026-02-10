@@ -1,7 +1,16 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { MarkerStorageData, MarkerChangeEvent, MarkerTypeConfig, MarkerType } from './types';
-import { DEFAULT_MARKER_TYPES } from './defaults';
+import {
+  MarkerStorageData,
+  MarkerChangeEvent,
+  MarkerTypeConfig,
+  MarkerType,
+  LineHighlightTypeConfig,
+  LineHighlightType,
+  LineHighlight,
+  MarkerStorageDataV2,
+} from './types';
+import { DEFAULT_MARKER_TYPES, DEFAULT_LINE_HIGHLIGHT_TYPES } from './defaults';
 
 const STORAGE_FILENAME = 'file-markers.json';
 
@@ -18,6 +27,8 @@ export const FALLBACK_MARKER: MarkerType = {
 export class MarkerStorage implements vscode.Disposable {
   private markerTypes: Map<string, MarkerType> = new Map();
   private markers: Map<string, string> = new Map();
+  private lineHighlightTypes: Map<string, LineHighlightType> = new Map();
+  private lineHighlights: Map<string, LineHighlight[]> = new Map(); // relativePath -> highlights
   private storageUri: vscode.Uri | undefined;
   private disposables: vscode.Disposable[] = [];
   private writeDebounceTimer: NodeJS.Timeout | undefined;
@@ -27,6 +38,11 @@ export class MarkerStorage implements vscode.Disposable {
 
   private readonly _onDidChangeMarkers = new vscode.EventEmitter<MarkerChangeEvent>();
   readonly onDidChangeMarkers = this._onDidChangeMarkers.event;
+
+  private readonly _onDidChangeLineHighlights = new vscode.EventEmitter<{
+    uri: vscode.Uri;
+  }>();
+  readonly onDidChangeLineHighlights = this._onDidChangeLineHighlights.event;
 
   constructor() {
     this.disposables.push(
@@ -64,6 +80,15 @@ export class MarkerStorage implements vscode.Disposable {
     this.configWatcher.onDidCreate(() => this.scheduleReload());
     this.configWatcher.onDidDelete(() => this.scheduleReload());
 
+    // Also listen for when the config file is saved within VSCode (more reliable than file watcher)
+    this.disposables.push(
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (this.storageUri && doc.uri.fsPath === this.storageUri.fsPath) {
+          this.scheduleReload();
+        }
+      })
+    );
+
     await this.load();
   }
 
@@ -86,14 +111,29 @@ export class MarkerStorage implements vscode.Disposable {
       const data = JSON.parse(contentStr);
       this.loadMarkerTypes(data.markerTypes || DEFAULT_MARKER_TYPES);
       this.markers = new Map(Object.entries(data.markers || {}));
+      // Load line highlight types and highlights
+      this.loadLineHighlightTypes(
+        data.lineHighlightTypes || DEFAULT_LINE_HIGHLIGHT_TYPES
+      );
+      this.lineHighlights = new Map(
+        Object.entries(data.lineHighlights || {}).map(([path, highlights]) => [
+          path,
+          highlights as LineHighlight[],
+        ])
+      );
       // Clear saved content since we've now loaded external changes
       this.lastSavedContent = undefined;
       return true;
     } catch {
       // File doesn't exist or is invalid - use defaults
-      const hadData = this.markers.size > 0 || this.markerTypes.size > 0;
+      const hadData =
+        this.markers.size > 0 ||
+        this.markerTypes.size > 0 ||
+        this.lineHighlights.size > 0;
       this.loadMarkerTypes(DEFAULT_MARKER_TYPES);
+      this.loadLineHighlightTypes(DEFAULT_LINE_HIGHLIGHT_TYPES);
       this.markers.clear();
+      this.lineHighlights.clear();
       this.lastSavedContent = undefined;
       return hadData;
     }
@@ -111,6 +151,36 @@ export class MarkerStorage implements vscode.Disposable {
         });
       }
     }
+  }
+
+  private loadLineHighlightTypes(configs: LineHighlightTypeConfig[]): void {
+    this.lineHighlightTypes.clear();
+    for (const config of configs) {
+      if (this.isValidLineHighlightTypeConfig(config)) {
+        this.lineHighlightTypes.set(config.id, {
+          id: config.id,
+          color: config.color,
+          label: config.label,
+        });
+      }
+    }
+  }
+
+  private isValidLineHighlightTypeConfig(
+    config: unknown
+  ): config is LineHighlightTypeConfig {
+    if (!config || typeof config !== 'object') {
+      return false;
+    }
+    const c = config as Record<string, unknown>;
+    return (
+      typeof c.id === 'string' &&
+      c.id.length > 0 &&
+      typeof c.color === 'string' &&
+      c.color.length > 0 &&
+      typeof c.label === 'string' &&
+      c.label.length > 0
+    );
   }
 
   private isValidMarkerTypeConfig(config: unknown): config is MarkerTypeConfig {
@@ -132,16 +202,25 @@ export class MarkerStorage implements vscode.Disposable {
     }
 
     // Convert marker types back to config format
-    const markerTypes: MarkerTypeConfig[] = Array.from(this.markerTypes.values()).map(m => ({
+    const markerTypes: MarkerTypeConfig[] = Array.from(
+      this.markerTypes.values()
+    ).map(m => ({
       id: m.id,
       badge: m.badge,
       color: (m.color as { id: string }).id, // ThemeColor.id contains the color ID string
       label: m.label,
     }));
 
-    const data: MarkerStorageData = {
+    // Convert line highlight types back to config format
+    const lineHighlightTypes: LineHighlightTypeConfig[] = Array.from(
+      this.lineHighlightTypes.values()
+    );
+
+    const data: MarkerStorageDataV2 = {
       markerTypes,
       markers: Object.fromEntries(this.markers),
+      lineHighlightTypes,
+      lineHighlights: Object.fromEntries(this.lineHighlights),
     };
 
     const content = Buffer.from(JSON.stringify(data, null, 2), 'utf8');
@@ -427,6 +506,177 @@ export class MarkerStorage implements vscode.Disposable {
     );
   }
 
+  // ============================================
+  // Line Highlight Type Methods
+  // ============================================
+
+  /**
+   * Get all configured line highlight types
+   */
+  getAllLineHighlightTypes(): LineHighlightType[] {
+    return Array.from(this.lineHighlightTypes.values());
+  }
+
+  /**
+   * Get a line highlight type by ID
+   */
+  getLineHighlightType(id: string): LineHighlightType | undefined {
+    return this.lineHighlightTypes.get(id);
+  }
+
+  // ============================================
+  // Line Highlight Methods
+  // ============================================
+
+  /**
+   * Get line highlights for a file
+   */
+  getLineHighlights(uri: vscode.Uri): LineHighlight[] {
+    const relativePath = this.getRelativePath(uri);
+    if (!relativePath) {
+      return [];
+    }
+    return this.lineHighlights.get(relativePath) ?? [];
+  }
+
+  /**
+   * Set a line highlight for a range. Removes any overlapping highlights.
+   */
+  setLineHighlight(
+    uri: vscode.Uri,
+    startLine: number,
+    endLine: number,
+    typeId: string
+  ): void {
+    const relativePath = this.getRelativePath(uri);
+    if (!relativePath) {
+      return;
+    }
+
+    const highlights = this.lineHighlights.get(relativePath) ?? [];
+
+    // Remove any overlapping highlights and add new one
+    const filtered = highlights.filter(
+      h => h.endLine < startLine || h.startLine > endLine
+    );
+    filtered.push({ startLine, endLine, typeId });
+
+    // Sort by start line
+    filtered.sort((a, b) => a.startLine - b.startLine);
+
+    this.lineHighlights.set(relativePath, filtered);
+    this.scheduleSave();
+    this._onDidChangeLineHighlights.fire({ uri });
+  }
+
+  /**
+   * Remove a specific line highlight
+   */
+  removeLineHighlight(
+    uri: vscode.Uri,
+    startLine: number,
+    endLine: number
+  ): void {
+    const relativePath = this.getRelativePath(uri);
+    if (!relativePath) {
+      return;
+    }
+
+    const highlights = this.lineHighlights.get(relativePath);
+    if (!highlights) {
+      return;
+    }
+
+    const filtered = highlights.filter(
+      h => !(h.startLine === startLine && h.endLine === endLine)
+    );
+
+    if (filtered.length === 0) {
+      this.lineHighlights.delete(relativePath);
+    } else {
+      this.lineHighlights.set(relativePath, filtered);
+    }
+
+    this.scheduleSave();
+    this._onDidChangeLineHighlights.fire({ uri });
+  }
+
+  /**
+   * Remove all line highlights in a file
+   */
+  removeAllLineHighlightsInFile(uri: vscode.Uri): void {
+    const relativePath = this.getRelativePath(uri);
+    if (!relativePath) {
+      return;
+    }
+
+    if (this.lineHighlights.delete(relativePath)) {
+      this.scheduleSave();
+      this._onDidChangeLineHighlights.fire({ uri });
+    }
+  }
+
+  /**
+   * Check if a file has any line highlights
+   */
+  hasLineHighlights(uri: vscode.Uri): boolean {
+    const relativePath = this.getRelativePath(uri);
+    if (!relativePath) {
+      return false;
+    }
+    const highlights = this.lineHighlights.get(relativePath);
+    return highlights !== undefined && highlights.length > 0;
+  }
+
+  /**
+   * Get all files with line highlights
+   */
+  getAllFilesWithLineHighlights(): vscode.Uri[] {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return [];
+    }
+
+    return Array.from(this.lineHighlights.keys())
+      .filter(path => (this.lineHighlights.get(path)?.length ?? 0) > 0)
+      .map(path => vscode.Uri.joinPath(workspaceFolder.uri, path));
+  }
+
+  /**
+   * Get total number of line highlights across all files
+   */
+  getLineHighlightCount(): number {
+    let count = 0;
+    for (const highlights of this.lineHighlights.values()) {
+      count += highlights.length;
+    }
+    return count;
+  }
+
+  /**
+   * Remove all line highlights from all files in the workspace
+   */
+  removeAllLineHighlights(): number {
+    const count = this.getLineHighlightCount();
+    if (count === 0) {
+      return 0;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return 0;
+    }
+
+    // Clear all line highlights
+    this.lineHighlights.clear();
+    this.scheduleSave();
+
+    // Fire a single event to trigger refresh
+    this._onDidChangeLineHighlights.fire({ uri: workspaceFolder.uri });
+
+    return count;
+  }
+
   private getRelativePath(uri: vscode.Uri): string | undefined {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
@@ -452,6 +702,7 @@ export class MarkerStorage implements vscode.Disposable {
     }
     this.configWatcher?.dispose();
     this._onDidChangeMarkers.dispose();
+    this._onDidChangeLineHighlights.dispose();
     this.disposables.forEach(d => d.dispose());
   }
 }

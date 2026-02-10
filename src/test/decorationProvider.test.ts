@@ -135,6 +135,81 @@ suite('MarkerDecorationProvider Test Suite', () => {
       await config.update('inheritFolderMarkers', false, vscode.ConfigurationTarget.Workspace);
       storage.removeMarker(folderUri);
     });
+
+    test('file with only line highlights shows ≡ badge', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/line-highlights-only.ts`);
+      const token = new vscode.CancellationTokenSource().token;
+
+      // Add line highlight without file marker
+      storage.setLineHighlight(testUri, 10, 20, 'highlight-yellow');
+
+      const decoration = provider.provideFileDecoration(testUri, token) as vscode.FileDecoration | undefined;
+
+      assert.ok(decoration);
+      assert.strictEqual(decoration.badge, '≡');
+      assert.strictEqual(decoration.tooltip, 'Has line highlights');
+      assert.strictEqual(decoration.propagate, false);
+
+      // Cleanup
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('file with marker and line highlights shows combined badge', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/marker-and-highlights.ts`);
+      const token = new vscode.CancellationTokenSource().token;
+
+      // Add both marker (1-char badge) and line highlight
+      storage.setMarker(testUri, 'done'); // Badge is '✓' (1 char)
+      storage.setLineHighlight(testUri, 5, 15, 'highlight-blue');
+
+      const decoration = provider.provideFileDecoration(testUri, token) as vscode.FileDecoration | undefined;
+
+      assert.ok(decoration);
+      // Combined badge: marker badge + line highlight indicator
+      assert.strictEqual(decoration.badge, '✓≡');
+      assert.strictEqual(decoration.propagate, false);
+
+      // Cleanup
+      storage.removeMarker(testUri);
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('tooltip includes line highlights info when file has both marker and highlights', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/tooltip-test.ts`);
+      const token = new vscode.CancellationTokenSource().token;
+
+      // Add both marker and line highlight
+      storage.setMarker(testUri, 'in-progress');
+      storage.setLineHighlight(testUri, 1, 10, 'highlight-green');
+
+      const decoration = provider.provideFileDecoration(testUri, token) as vscode.FileDecoration | undefined;
+
+      assert.ok(decoration);
+      assert.ok(decoration.tooltip?.includes('In Progress'), 'Tooltip should include marker label');
+      assert.ok(decoration.tooltip?.includes('Has line highlights'), 'Tooltip should mention line highlights');
+
+      // Cleanup
+      storage.removeMarker(testUri);
+      storage.removeAllLineHighlightsInFile(testUri);
+    });
   });
 
   suite('refresh', () => {
