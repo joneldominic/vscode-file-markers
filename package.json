@@ -74,6 +74,26 @@
       {
         "command": "file-markers.toggleEnabled",
         "title": "File Markers: Toggle Enable/Disable"
+      },
+      {
+        "command": "file-markers.setLineHighlight",
+        "title": "File Markers: Set Line Highlight..."
+      },
+      {
+        "command": "file-markers.removeLineHighlight",
+        "title": "File Markers: Remove Line Highlight"
+      },
+      {
+        "command": "file-markers.removeAllLineHighlightsInFile",
+        "title": "File Markers: Remove All Line Highlights in File"
+      },
+      {
+        "command": "file-markers.toggleLineHighlight",
+        "title": "File Markers: Toggle Line Highlight"
+      },
+      {
+        "command": "file-markers.removeAllLineHighlights",
+        "title": "File Markers: Remove All Line Highlights"
       }
     ],
     "menus": {
@@ -92,6 +112,23 @@
           "command": "file-markers.removeMarkersInFolder",
           "group": "2_workspace@3",
           "when": "explorerResourceIsFolder && config.fileMarkers.enabled"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "file-markers.setLineHighlight",
+          "group": "9_fileMarkers@1",
+          "when": "config.fileMarkers.enabled && editorHasSelection"
+        },
+        {
+          "command": "file-markers.removeLineHighlight",
+          "group": "9_fileMarkers@2",
+          "when": "config.fileMarkers.enabled && editorHasSelection"
+        },
+        {
+          "command": "file-markers.removeAllLineHighlightsInFile",
+          "group": "9_fileMarkers@3",
+          "when": "config.fileMarkers.enabled"
         }
       ],
       "commandPalette": [
@@ -121,6 +158,25 @@
         },
         {
           "command": "file-markers.toggleEnabled"
+        },
+        {
+          "command": "file-markers.setLineHighlight",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "file-markers.removeLineHighlight",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "file-markers.removeAllLineHighlightsInFile",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "file-markers.toggleLineHighlight",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "file-markers.removeAllLineHighlights"
         }
       ]
     },
@@ -129,6 +185,12 @@
         "command": "file-markers.toggleMarker",
         "key": "ctrl+shift+m",
         "mac": "cmd+shift+m",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "file-markers.toggleLineHighlight",
+        "key": "ctrl+shift+h",
+        "mac": "cmd+shift+h",
         "when": "editorTextFocus"
       }
     ],

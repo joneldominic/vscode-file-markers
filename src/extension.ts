@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import { MarkerStorage } from './storage';
 import { MarkerDecorationProvider } from './decorationProvider';
+import { LineHighlightProvider } from './lineHighlightProvider';
 import { StatusBarManager } from './statusBar';
 import { registerCommands } from './commands';
 
 let storage: MarkerStorage | undefined;
 let decorationProvider: MarkerDecorationProvider | undefined;
+let lineHighlightProvider: LineHighlightProvider | undefined;
 let statusBarManager: StatusBarManager | undefined;
 
 export async function activate(
@@ -26,6 +28,10 @@ export async function activate(
   context.subscriptions.push(
     vscode.window.registerFileDecorationProvider(decorationProvider)
   );
+
+  // Initialize line highlight provider
+  lineHighlightProvider = new LineHighlightProvider(storage);
+  context.subscriptions.push(lineHighlightProvider);
 
   // Initialize status bar
   statusBarManager = new StatusBarManager(storage);
@@ -60,5 +66,6 @@ export async function activate(
 export function deactivate(): void {
   storage = undefined;
   decorationProvider = undefined;
+  lineHighlightProvider = undefined;
   statusBarManager = undefined;
 }
