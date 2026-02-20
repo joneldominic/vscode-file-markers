@@ -114,6 +114,18 @@
           "when": "explorerResourceIsFolder && config.fileMarkers.enabled"
         }
       ],
+      "editor/title/context": [
+        {
+          "command": "file-markers.setMarker",
+          "group": "3_fileMarkers@1",
+          "when": "config.fileMarkers.enabled"
+        },
+        {
+          "command": "file-markers.removeMarker",
+          "group": "3_fileMarkers@2",
+          "when": "config.fileMarkers.enabled"
+        }
+      ],
       "editor/context": [
         {
           "command": "file-markers.setLineHighlight",
