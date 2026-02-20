@@ -5,6 +5,13 @@ All notable changes to the File Markers extension will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.5.0...file-markers-v1.6.0) (2026-02-20)
+
+
+### Added
+
+* add set/remove marker to editor tab context menu and some README improvements ([#33](https://github.com/joneldominic/vscode-file-markers/issues/33)) ([c15aea0](https://github.com/joneldominic/vscode-file-markers/commit/c15aea0e2f3cde6c6400dcefd49cb9fc3ae7a220))
+
 ## [1.5.0](https://github.com/joneldominic/vscode-file-markers/compare/file-markers-v1.4.4...file-markers-v1.5.0) (2026-02-10)
 
 
