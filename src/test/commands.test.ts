@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { MarkerStorage } from '../storage';
+import { NoteStorage } from '../noteStorage';
 
 suite('Commands Test Suite', () => {
   let storage: MarkerStorage;
@@ -490,6 +491,124 @@ suite('Commands Test Suite', () => {
 
       // Close the opened editor
       await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+    });
+  });
+
+  suite('openNotedFile command', () => {
+    test('opens the file in editor', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceFolder = vscode.workspace.workspaceFolders[0];
+      const testFile = vscode.Uri.joinPath(workspaceFolder.uri, 'open-noted-test.txt');
+
+      // Create test file
+      await vscode.workspace.fs.writeFile(testFile, Buffer.from('noted file content'));
+
+      try {
+        // Execute the command
+        await vscode.commands.executeCommand('file-markers.openNotedFile', testFile);
+
+        // Verify the file is now the active editor
+        const activeEditor = vscode.window.activeTextEditor;
+        assert.ok(activeEditor, 'Should have an active editor');
+        assert.strictEqual(
+          activeEditor!.document.uri.fsPath,
+          testFile.fsPath,
+          'Active editor should be the opened file'
+        );
+      } finally {
+        await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        try {
+          await vscode.workspace.fs.delete(testFile);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+    });
+  });
+
+  suite('note commands', () => {
+    let noteStorage: NoteStorage;
+
+    async function cleanupNotesFile(): Promise<void> {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (workspaceFolder) {
+        const notesFile = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'file-marker-notes.json');
+        try {
+          await vscode.workspace.fs.delete(notesFile);
+        } catch {
+          // File may not exist
+        }
+      }
+    }
+
+    setup(async () => {
+      await cleanupNotesFile();
+      noteStorage = new NoteStorage();
+      await noteStorage.initialize();
+    });
+
+    teardown(async () => {
+      noteStorage.dispose();
+      await cleanupNotesFile();
+    });
+
+    test('setNote command executes without error', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceFolder = vscode.workspace.workspaceFolders[0];
+      const testUri = vscode.Uri.joinPath(workspaceFolder.uri, 'set-note-cmd.ts');
+
+      // setNote focuses the note editor panel — should not throw
+      await vscode.commands.executeCommand('file-markers.setNote', testUri);
+    });
+
+    test('removeNote command does nothing when called without URI', async function() {
+      // Should not throw when called without args
+      await vscode.commands.executeCommand('file-markers.removeNote');
+    });
+
+    test('notes persist to separate file via extension commands', async function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceFolder = vscode.workspace.workspaceFolders[0];
+      const testUri = vscode.Uri.joinPath(workspaceFolder.uri, 'cmd-persist-test.ts');
+
+      // Set a note directly via NoteStorage (simulating what the webview does)
+      noteStorage.setNote(testUri, 'Command persistence test');
+
+      // Wait for debounced save
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Verify it went to the notes file, not the markers file
+      const notesFile = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'file-marker-notes.json');
+      const content = await vscode.workspace.fs.readFile(notesFile);
+      const data = JSON.parse(Buffer.from(content).toString('utf8'));
+
+      assert.ok(data.notes, 'Notes file should have a "notes" key');
+      assert.strictEqual(data.notes['cmd-persist-test.ts'], 'Command persistence test');
+
+      // Verify markers file is NOT affected
+      const markersFile = vscode.Uri.joinPath(workspaceFolder.uri, '.vscode', 'file-markers.json');
+      try {
+        const markersContent = await vscode.workspace.fs.readFile(markersFile);
+        const markersData = JSON.parse(Buffer.from(markersContent).toString('utf8'));
+        assert.strictEqual(markersData.notes, undefined, 'Markers file should not contain notes');
+      } catch {
+        // Markers file may not exist, which is fine
+      }
+
+      // Cleanup
+      noteStorage.removeNote(testUri);
     });
   });
 });

@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import { MarkerStorage } from './storage';
+import { NoteStorage } from './noteStorage';
 import { DEFAULT_MARKER_TYPES } from './defaults';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
-  storage: MarkerStorage
+  storage: MarkerStorage,
+  noteStorage: NoteStorage
 ): void {
   // Set Marker command with QuickPick (supports multi-select)
   context.subscriptions.push(
@@ -452,6 +454,34 @@ export function registerCommands(
               cycleOrder[currentIndex + 1]
             );
           }
+        }
+      }
+    )
+  );
+
+  // ============================================
+  // Note Commands
+  // ============================================
+
+  // Note: setNote is registered inline in extension.ts because it needs notesViewProvider
+
+  // Remove Note (single file only, with confirmation dialog)
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'file-markers.removeNote',
+      async (uri: vscode.Uri) => {
+        if (!uri) {
+          return;
+        }
+
+        const fileName = vscode.workspace.asRelativePath(uri);
+        const confirm = await vscode.window.showWarningMessage(
+          `Remove note from "${fileName}"?`,
+          { modal: true },
+          'Remove'
+        );
+        if (confirm === 'Remove') {
+          noteStorage.removeNote(uri);
         }
       }
     )

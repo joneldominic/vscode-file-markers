@@ -2,15 +2,19 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { MarkerStorage, FALLBACK_MARKER } from '../storage';
 import { MarkerDecorationProvider } from '../decorationProvider';
+import { NoteStorage } from '../noteStorage';
 
 suite('MarkerDecorationProvider Test Suite', () => {
   let storage: MarkerStorage;
+  let noteStorage: NoteStorage;
   let provider: MarkerDecorationProvider;
 
   setup(async () => {
     storage = new MarkerStorage();
     await storage.initialize();
-    provider = new MarkerDecorationProvider(storage);
+    noteStorage = new NoteStorage();
+    await noteStorage.initialize();
+    provider = new MarkerDecorationProvider(storage, noteStorage);
   });
 
   teardown(async () => {
@@ -21,6 +25,7 @@ suite('MarkerDecorationProvider Test Suite', () => {
     }
 
     provider.dispose();
+    noteStorage.dispose();
     storage.dispose();
   });
 
@@ -209,6 +214,71 @@ suite('MarkerDecorationProvider Test Suite', () => {
       // Cleanup
       storage.removeMarker(testUri);
       storage.removeAllLineHighlightsInFile(testUri);
+    });
+
+    test('file with note only shows N badge and note tooltip', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/note-only.ts`);
+      const token = new vscode.CancellationTokenSource().token;
+
+      noteStorage.setNote(testUri, 'This file needs refactoring');
+
+      const decoration = provider.provideFileDecoration(testUri, token) as vscode.FileDecoration | undefined;
+
+      assert.ok(decoration);
+      assert.strictEqual(decoration.badge, 'N');
+      assert.ok(decoration.tooltip?.includes('Note:'), 'Tooltip should include "Note:"');
+      assert.ok(decoration.tooltip?.includes('refactoring'), 'Tooltip should include note text');
+      assert.strictEqual(decoration.propagate, false);
+
+      // Cleanup
+      noteStorage.removeNote(testUri);
+    });
+
+    test('file with marker and note shows marker badge with note in tooltip', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/marker-and-note.ts`);
+      const token = new vscode.CancellationTokenSource().token;
+
+      storage.setMarker(testUri, 'done');
+      noteStorage.setNote(testUri, 'Completed in sprint 5');
+
+      const decoration = provider.provideFileDecoration(testUri, token) as vscode.FileDecoration | undefined;
+
+      assert.ok(decoration);
+      assert.strictEqual(decoration.badge, '✓');
+      assert.ok(decoration.tooltip?.includes('Done'), 'Tooltip should include marker label');
+      assert.ok(decoration.tooltip?.includes('Note:'), 'Tooltip should include note');
+      assert.ok(decoration.tooltip?.includes('sprint 5'), 'Tooltip should include note text');
+
+      // Cleanup
+      storage.removeMarker(testUri);
+      noteStorage.removeNote(testUri);
+    });
+
+    test('file without note or marker returns undefined', function() {
+      if (!vscode.workspace.workspaceFolders?.[0]) {
+        this.skip();
+        return;
+      }
+
+      const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      const testUri = vscode.Uri.file(`${workspaceRoot}/nothing.ts`);
+      const token = new vscode.CancellationTokenSource().token;
+
+      const decoration = provider.provideFileDecoration(testUri, token);
+
+      assert.strictEqual(decoration, undefined);
     });
   });
 

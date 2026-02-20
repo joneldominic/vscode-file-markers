@@ -80,3 +80,8 @@ export interface MarkerStorageDataV2 {
   lineHighlightTypes?: LineHighlightTypeConfig[];
   lineHighlights?: Record<string, LineHighlight[]>; // relativePath -> highlights
 }
+
+/** Storage format for file notes (separate file) */
+export interface NoteStorageData {
+  notes: Record<string, string>; // relativePath -> note text
+}

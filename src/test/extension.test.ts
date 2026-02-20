@@ -33,5 +33,12 @@ suite('Extension Test Suite', () => {
     assert.ok(commands.includes('file-markers.openConfig'), 'openConfig command should exist');
     assert.ok(commands.includes('file-markers.showMarkerStats'), 'showMarkerStats command should exist');
     assert.ok(commands.includes('file-markers.toggleEnabled'), 'toggleEnabled command should exist');
+
+    // Note commands
+    assert.ok(commands.includes('file-markers.setNote'), 'setNote command should exist');
+    assert.ok(commands.includes('file-markers.removeNote'), 'removeNote command should exist');
+    assert.ok(commands.includes('file-markers.openNotedFile'), 'openNotedFile command should exist');
+    assert.ok(commands.includes('file-markers.revealNotedFile'), 'revealNotedFile command should exist');
+    assert.ok(commands.includes('file-markers.removeNoteFromTree'), 'removeNoteFromTree command should exist');
   });
 });

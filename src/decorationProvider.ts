@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { MarkerStorage, FALLBACK_MARKER } from './storage';
+import { NoteStorage } from './noteStorage';
 
 /**
  * Color for inherited markers (grayed out)
@@ -11,6 +12,11 @@ const INHERITED_MARKER_COLOR = new vscode.ThemeColor('disabledForeground');
  */
 const LINE_HIGHLIGHT_BADGE = '≡';
 
+/**
+ * Badge for files with notes only (no marker, no line highlights)
+ */
+const NOTE_BADGE = 'N';
+
 export class MarkerDecorationProvider
   implements vscode.FileDecorationProvider, vscode.Disposable
 {
@@ -20,7 +26,10 @@ export class MarkerDecorationProvider
     new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
-  constructor(private readonly storage: MarkerStorage) {
+  constructor(
+    private readonly storage: MarkerStorage,
+    private readonly noteStorage: NoteStorage
+  ) {
     this.disposables.push(
       storage.onDidChangeMarkers(() => {
         // When inheritance is enabled, any marker change could affect children
@@ -34,6 +43,20 @@ export class MarkerDecorationProvider
     this.disposables.push(
       storage.onDidChangeLineHighlights(() => {
         this.refresh();
+      })
+    );
+
+    // Listen for note changes — refresh only the affected file when possible
+    this.disposables.push(
+      noteStorage.onDidChangeNotes(({ uri }) => {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (workspaceFolder && uri.toString() === workspaceFolder.uri.toString()) {
+          // External file reload — could affect many notes, refresh all
+          this.refresh();
+        } else {
+          // Individual note change — refresh only that file
+          this._onDidChangeFileDecorations.fire(uri);
+        }
       })
     );
 
@@ -63,15 +86,27 @@ export class MarkerDecorationProvider
     // Check for file marker
     const effective = this.storage.getEffectiveMarker(uri);
     const hasLineHighlights = this.storage.hasLineHighlights(uri);
+    const note = this.noteStorage.getNote(uri);
 
-    // If no marker and no line highlights, return nothing
-    if (!effective && !hasLineHighlights) {
+    // If no marker, no line highlights, and no note, return nothing
+    if (!effective && !hasLineHighlights && !note) {
       return undefined;
+    }
+
+    // Note-only files (no marker, no highlights)
+    if (!effective && !hasLineHighlights && note) {
+      const notePreview = note.length > 100 ? note.substring(0, 97) + '...' : note;
+      return {
+        badge: NOTE_BADGE,
+        color: new vscode.ThemeColor('descriptionForeground'),
+        tooltip: `Note: ${notePreview}`,
+        propagate: false,
+      };
     }
 
     // Build decoration based on what we have
     if (effective) {
-      // Has file marker (may also have line highlights)
+      // Has file marker (may also have line highlights and/or notes)
       const { markerId, inherited } = effective;
       const marker = this.storage.getMarkerType(markerId);
       const isUnknown = marker.id === FALLBACK_MARKER.id;
@@ -106,6 +141,12 @@ export class MarkerDecorationProvider
         }
       }
 
+      // Append note to tooltip
+      if (note) {
+        const notePreview = note.length > 100 ? note.substring(0, 97) + '...' : note;
+        tooltip = `${tooltip}\n---\nNote: ${notePreview}`;
+      }
+
       return {
         badge,
         color,
@@ -113,11 +154,17 @@ export class MarkerDecorationProvider
         propagate: false,
       };
     } else {
-      // Only line highlights, no file marker
+      // Only line highlights (possibly with note), no file marker
+      let tooltip = 'Has line highlights';
+      if (note) {
+        const notePreview = note.length > 100 ? note.substring(0, 97) + '...' : note;
+        tooltip = `${tooltip}\n---\nNote: ${notePreview}`;
+      }
+
       return {
         badge: LINE_HIGHLIGHT_BADGE,
         color: new vscode.ThemeColor('editorInfo.foreground'),
-        tooltip: 'Has line highlights',
+        tooltip,
         propagate: false,
       };
     }

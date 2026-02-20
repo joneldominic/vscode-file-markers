@@ -42,6 +42,30 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "fileNotes",
+          "title": "File Notes",
+          "icon": "assets/notes-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "fileNotes": [
+        {
+          "id": "fileMarkers.notedFiles",
+          "name": "Noted Files",
+          "when": "config.fileMarkers.enabled"
+        },
+        {
+          "type": "webview",
+          "id": "fileMarkers.noteEditor",
+          "name": "Note Editor",
+          "when": "config.fileMarkers.enabled"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "file-markers.setMarker",
@@ -94,6 +118,28 @@
       {
         "command": "file-markers.removeAllLineHighlights",
         "title": "File Markers: Remove All Line Highlights"
+      },
+      {
+        "command": "file-markers.openNotedFile",
+        "title": "Open File"
+      },
+      {
+        "command": "file-markers.revealNotedFile",
+        "title": "Reveal in Explorer",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "file-markers.removeNoteFromTree",
+        "title": "Remove Note",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "file-markers.setNote",
+        "title": "File Markers: Add/Edit Note..."
+      },
+      {
+        "command": "file-markers.removeNote",
+        "title": "File Markers: Remove Note"
       }
     ],
     "menus": {
@@ -112,6 +158,16 @@
           "command": "file-markers.removeMarkersInFolder",
           "group": "2_workspace@3",
           "when": "explorerResourceIsFolder && config.fileMarkers.enabled"
+        },
+        {
+          "command": "file-markers.setNote",
+          "group": "2_workspace@4",
+          "when": "config.fileMarkers.enabled && !explorerResourceIsFolder && !listMultiSelection"
+        },
+        {
+          "command": "file-markers.removeNote",
+          "group": "2_workspace@5",
+          "when": "config.fileMarkers.enabled && !explorerResourceIsFolder && !listMultiSelection"
         }
       ],
       "editor/title/context": [
@@ -124,6 +180,14 @@
           "command": "file-markers.removeMarker",
           "group": "3_fileMarkers@2",
           "when": "config.fileMarkers.enabled"
+        },
+        {
+          "command": "file-markers.setNote",
+          "group": "3_fileMarkers@3"
+        },
+        {
+          "command": "file-markers.removeNote",
+          "group": "3_fileMarkers@4"
         }
       ],
       "editor/context": [
@@ -141,6 +205,28 @@
           "command": "file-markers.removeAllLineHighlightsInFile",
           "group": "9_fileMarkers@3",
           "when": "config.fileMarkers.enabled"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "file-markers.revealNotedFile",
+          "when": "view == fileMarkers.notedFiles && viewItem == notedFile",
+          "group": "inline@1"
+        },
+        {
+          "command": "file-markers.removeNoteFromTree",
+          "when": "view == fileMarkers.notedFiles && viewItem == notedFile",
+          "group": "inline@2"
+        },
+        {
+          "command": "file-markers.revealNotedFile",
+          "when": "view == fileMarkers.notedFiles && viewItem == notedFile",
+          "group": "navigation"
+        },
+        {
+          "command": "file-markers.removeNoteFromTree",
+          "when": "view == fileMarkers.notedFiles && viewItem == notedFile",
+          "group": "7_modification"
         }
       ],
       "commandPalette": [
@@ -189,6 +275,26 @@
         },
         {
           "command": "file-markers.removeAllLineHighlights"
+        },
+        {
+          "command": "file-markers.openNotedFile",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.revealNotedFile",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.removeNoteFromTree",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.setNote",
+          "when": "false"
+        },
+        {
+          "command": "file-markers.removeNote",
+          "when": "false"
         }
       ]
     },
