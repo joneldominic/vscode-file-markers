@@ -22,7 +22,7 @@
     "productivity",
     "workflow"
   ],
-  "icon": "images/icon.png",
+  "icon": "assets/icon.png",
   "galleryBanner": {
     "color": "#1e1e1e",
     "theme": "dark"
@@ -112,6 +112,18 @@
           "command": "file-markers.removeMarkersInFolder",
           "group": "2_workspace@3",
           "when": "explorerResourceIsFolder && config.fileMarkers.enabled"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "file-markers.setMarker",
+          "group": "3_fileMarkers@1",
+          "when": "config.fileMarkers.enabled"
+        },
+        {
+          "command": "file-markers.removeMarker",
+          "group": "3_fileMarkers@2",
+          "when": "config.fileMarkers.enabled"
         }
       ],
       "editor/context": [
