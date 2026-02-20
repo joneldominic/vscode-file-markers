@@ -113,6 +113,12 @@ You can define custom marker types by editing `.vscode/file-markers.json` direct
       "badge": "🚫",
       "color": "errorForeground",
       "label": "Blocked"
+    },
+    {
+      "id": "needs-discussion",
+      "badge": "⚠️",
+      "color": "editorWarning.foreground",
+      "label": "Needs Discussion"
     }
   ],
   "markers": {
